@@ -1,17 +1,20 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React from "react";
+import "./App.css";
+import { Routes, Route } from "react-router-dom";
+import MainLayout from "./layouts/MainLayout"; 
+import Home from "./pages/Home"; // Tạo file Home.tsx sau
+import Forum from "./pages/Forum"; // Tạo file Forum.tsx sau
 
-function App() {
-  const [count, setCount] = useState(0)
-
+const App: React.FC = () => {
   return (
-    <>
-      <h1 className="text-red-500 text-3xl">Hello Tailwind</h1>
+    <MainLayout>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/forum" element={<Forum />} />
+        {/* Thêm các route khác nếu cần */}
+      </Routes>
+    </MainLayout>
+  );
+};
 
-    </>
-  )
-}
-
-export default App
+export default App;
