@@ -28,7 +28,7 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, username }) => {
   }, [openMenu]);
 
   return (
-    <header className="flex flex-row p-4 w-full items-center border-b border-gray-100 ">
+    <header className="flex flex-row p-4 w-full h-16 items-center border-b border-gray-100 ">
       <h1 className="text-xl font-bold">ForumTech</h1>
       <SearchBar />
       <div className="flex items-center min-w-10 ml-auto space-x-4 relative">
