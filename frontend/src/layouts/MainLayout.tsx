@@ -13,7 +13,7 @@ const MainLayout: React.FC<LayoutProps> = ({ children }) => {
       <Header isLoggedIn={true} username="Nguyen Thanh Trí" />
       <div className="flex flex-1">
         <Sidebar />
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 ml-64 mt-16">{children}</main>
       </div>
     </div>
   );

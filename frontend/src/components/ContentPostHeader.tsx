@@ -7,7 +7,7 @@ interface ContentHeaderProps {
   onCreate?: () => void;
 }
 
-const ContentHeader: React.FC<ContentHeaderProps> = ({ title, onCreate }) => {
+const ContentPostHeader: React.FC<ContentHeaderProps> = ({ title, onCreate }) => {
   return (
     <div className="flex items-center justify-between mb-6">
       <h2 className="text-4xl font-semibold">{`Bài viết về ${title}`}</h2>
@@ -22,4 +22,4 @@ const ContentHeader: React.FC<ContentHeaderProps> = ({ title, onCreate }) => {
   );
 };
 
-export default ContentHeader;
+export default ContentPostHeader;

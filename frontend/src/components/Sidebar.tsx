@@ -120,9 +120,7 @@ const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-64 bg-white shadow-md p-4 overflow-y-auto"
-    style={{ height: "calc(100vh - 64px)" }} // 64px là chiều cao header
-    >
+    <aside className="fixed top-[64px] left-0 h-[calc(100vh-64px)] w-64 bg-white border-r border-black/10 shadow-md  p-4 overflow-y-auto ">
       <nav className="space-y-2">
         {categories.map((category) => (
           <div key={category.name}>

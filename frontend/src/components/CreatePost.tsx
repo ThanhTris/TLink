@@ -11,16 +11,13 @@ const tagOptions = [
   {
     parent: "Lập trình",
     children: [
-      "Frontend",
       "HTML",
       "CSS",
       "JavaScript",
       "React",
-      "Backend",
       "Node.js",
       "Java",
       "PHP",
-      "Mobile",
       "Android",
       "iOS",
       "Flutter",
@@ -96,7 +93,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ onCancel, onSubmit }) => {
         />
       </div>
       <div className="mb-4">
-        <label className="block font-medium mb-1">Thể Loại</label>
+        <label className="block font-medium mb-1">Thẻ</label>
         <div className="flex gap-4">
           <div className="w-1/2">
             <Select
@@ -144,7 +141,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ onCancel, onSubmit }) => {
       </div>
       <div className="flex justify-end gap-3 mt-8">
         <Button
-          className="bg-gray-100 text-gray-500 px-6 py-2 rounded-full hover:bg-gray-200 transition"
+          className="bg-gray-100 text-black px-6 py-2 rounded-full hover:bg-gray-200 transition"
           onClick={onCancel}
         >
           Hủy
