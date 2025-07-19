@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import SearchBar from "./SearchBar";
 import Button from "./Button";
 import { ChevronDown } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   isLoggedIn: boolean;
@@ -11,6 +12,13 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ isLoggedIn, username }) => {
   const [openMenu, setOpenMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const handleLogin = () => {
+    navigate('/login');
+  };
+  const handleRegister = () => {
+    navigate('/register');
+  };
 
   // Đóng menu khi click ra ngoài
   React.useEffect(() => {
@@ -31,7 +39,7 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, username }) => {
     <header className="flex flex-row fixed top-0 left-0 right-0 p-4 h-16 items-center bg-white border-b border-black/10 shadow-md z-50">
       <h1 className="text-xl font-bold">ForumTech</h1>
       <SearchBar />
-      <div className="flex items-center min-w-10 ml-auto space-x-4 relative">
+      <div className="flex items-center justify-around min-w-70 ml-auto ">
         {isLoggedIn ? (
           <div className="relative" ref={menuRef}>
             <button
@@ -68,7 +76,7 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, username }) => {
                 </a>
                 <button
                   className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-red-500"
-                  onClick={() => {/* handle logout here */}}
+                  onClick={handleLogin}
                 >
                   Đăng xuất
                 </button>
@@ -76,11 +84,13 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, username }) => {
             )}
           </div>
         ) : (
-          <>
-            <Button className="bg-blue-100 text-blue-600 font-medium px-6 py-2 rounded-full shadow-none hover:bg-blue-200 transition flex-1">
+          <> 
+            <Button className="bg-blue-100 text-blue-600 font-medium px-6 py-2.5 rounded-full shadow-none hover:bg-blue-200 transition"
+              onClick={handleRegister}>
               Đăng ký
             </Button>
-            <Button className="bg-blue-500 text-white font-medium px-6 py-2 rounded-full shadow-none hover:bg-blue-600 transition flex-1">
+            <Button className="bg-blue-500 text-white font-medium px-6 py-2.5 rounded-full shadow-none hover:bg-blue-600 transition"
+              onClick={handleLogin}>
               Đăng nhập
             </Button>
           </>
