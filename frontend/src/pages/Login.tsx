@@ -73,6 +73,9 @@ const Login: React.FC = () => {
   const handleRegisterClick = () => {
     navigate("/register"); // Điều hướng đến trang Register
   };
+  const handleForgotPasswordClick = () => {
+    navigate("/login/forgot-password"); // Điều hướng đến trang Forgot Password
+  };
 
   return (
     <div className="flex flex-row w-full h-screen">
@@ -113,9 +116,12 @@ const Login: React.FC = () => {
             />
             Remember me
           </label>
-          <a href="#" className="text-blue-600 hover:underline">
-            Forgot Password?
-          </a>
+          <span
+            className="text-blue-600 cursor-pointer hover:underline"
+            onClick={handleForgotPasswordClick}
+          >
+            Forgot password?
+          </span>
         </div>
 
         <Button
