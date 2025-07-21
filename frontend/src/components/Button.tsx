@@ -1,25 +1,17 @@
-import React from 'react';
-import clsx from 'clsx';
+import React from "react";
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps {
+  onClick?: () => void;
   className?: string;
+  children: React.ReactNode;
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, ...props }, ref) => {
-    const baseStyles =
-      'inline-flex items-center justify-center px-4 py-2 text-center';
-
-    return (
-      <button
-        ref={ref}
-        className={clsx(baseStyles, className)}
-        {...props}
-      />
-    );
-  }
-);
-
-Button.displayName = 'Button';
+const Button: React.FC<ButtonProps> = ({ onClick, className, children }) => {
+  return (
+    <button onClick={onClick} className={className}>
+      {children}
+    </button>
+  );
+};
 
 export default Button;

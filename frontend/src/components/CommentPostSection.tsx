@@ -1,150 +1,172 @@
 import React, { useState } from "react";
 import { Heart } from "lucide-react";
 import Button from "./Button";
+import { getTimeAgo } from "../utils/timeAgo";
+import { postService } from "../services/postService";
 
 interface Comment {
   id: number;
-  author: string;
+  post_id: number;
+  user_id: number;
   content: string;
   createdAt: Date;
   likes: number;
   replies: Comment[];
   isEditing?: boolean;
   avatarSrc: string;
+  isHidden?: boolean;
 }
 
 interface CommentSectionProps {
   initialComments: Comment[];
   onAddComment: (content: string) => void;
   currentUser: string;
+  post_id: number;
 }
+
+const currentUserId = 1; // Giả lập user hiện tại, bạn có thể truyền từ props
 
 const CommentPostSection: React.FC<CommentSectionProps> = ({
   initialComments,
   onAddComment,
   currentUser,
+  post_id,
 }) => {
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [newComment, setNewComment] = useState("");
   const [editCommentId, setEditCommentId] = useState<number | null>(null);
   const [editContent, setEditContent] = useState("");
   const [showMenuId, setShowMenuId] = useState<number | null>(null);
-  const [likedComments, setLikedComments] = useState<{ [key: number]: boolean }>({}); // Theo dõi trạng thái thả tim
-  const [replyTo, setReplyTo] = useState<number | null>(null); // Theo dõi comment đang trả lời
-  const [newReply, setNewReply] = useState(""); // Nội dung trả lời
+  const [likedComments, setLikedComments] = useState<{ [key: number]: boolean }>({});
+  const [replyTo, setReplyTo] = useState<number | null>(null);
+  const [newReply, setNewReply] = useState("");
 
-  function timeAgo(date: Date) {
-    const now = new Date();
-    const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
-    if (diff < 60) return `${diff} giây trước`;
-    if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
-    if (diff < 2592000) return `${Math.floor(diff / 86400)} ngày trước`;
-    if (diff < 31536000) return `${Math.floor(diff / 2592000)} tháng trước`;
-    return `${Math.floor(diff / 31536000)} năm trước`;
-  }
-
-  const addComment = () => {
+  // Thêm bình luận mới (cấp 0)
+  const addComment = async () => {
     if (newComment.trim()) {
       const newCommentObj: Comment = {
         id: Date.now(),
-        author: currentUser,
+        post_id,
+        user_id: currentUserId,
         content: newComment,
         createdAt: new Date(),
         likes: 0,
         replies: [],
         avatarSrc: "https://tse3.mm.bing.net/th/id/OIP.cVIjZO1CHBYfqIB04Kb9LgHaFj?w=1400&h=1050&rs=1&pid=ImgDetMain&o=7&rm=3",
       };
+      await postService.addComment(post_id, newComment, currentUserId);
       onAddComment(newComment);
       setComments([...comments, newCommentObj]);
       setNewComment("");
     }
   };
 
-  const addReply = (commentId: number) => {
+  // Đệ quy thêm reply vào đúng comment cha
+  const addReplyRecursive = (list: Comment[], parentId: number, replyObj: Comment): Comment[] => {
+    return list.map((comment) => {
+      if (comment.id === parentId) {
+        return { ...comment, replies: [...comment.replies, replyObj] };
+      }
+      return { ...comment, replies: addReplyRecursive(comment.replies, parentId, replyObj) };
+    });
+  };
+
+  // Thêm trả lời cho bất kỳ cấp nào
+  const addReply = async (parentId: number) => {
     if (newReply.trim()) {
-      setComments((prev) => {
-        const updatedComments = prev.map((comment) =>
-          comment.id === commentId
-            ? {
-                ...comment,
-                replies: [
-                  ...comment.replies,
-                  {
-                    id: Date.now() + Math.random(),
-                    author: currentUser,
-                    content: newReply,
-                    createdAt: new Date(),
-                    likes: 0,
-                    replies: [],
-                    avatarSrc: "https://tse3.mm.bing.net/th/id/OIP.cVIjZO1CHBYfqIB04Kb9LgHaFj?w=1400&h=1050&rs=1&pid=ImgDetMain&o=7&rm=3",
-                  },
-                ],
-              }
-            : comment
-        );
-        return updatedComments;
-      });
+      const replyObj: Comment = {
+        id: Date.now() + Math.random(),
+        post_id,
+        user_id: currentUserId,
+        content: newReply,
+        createdAt: new Date(),
+        likes: 0,
+        replies: [],
+        avatarSrc: "https://tse3.mm.bing.net/th/id/OIP.cVIjZO1CHBYfqIB04Kb9LgHaFj?w=1400&h=1050&rs=1&pid=ImgDetMain&o=7&rm=3",
+      };
+      await postService.addComment(post_id, newReply, currentUserId);
+      setComments((prev) => addReplyRecursive(prev, parentId, replyObj));
       setNewReply("");
-      setReplyTo(null); // Đóng ô trả lời sau khi gửi
+      setReplyTo(null);
     }
   };
 
-  const toggleLikeComment = (commentId: number, isReply?: boolean) => {
+  // Đệ quy like comment/reply
+  const toggleLikeRecursive = (list: Comment[], commentId: number): Comment[] => {
+    return list.map((comment) => {
+      if (comment.id === commentId) {
+        return {
+          ...comment,
+          likes: likedComments[commentId] ? comment.likes - 1 : comment.likes + 1,
+        };
+      }
+      return { ...comment, replies: toggleLikeRecursive(comment.replies, commentId) };
+    });
+  };
+
+  const toggleLikeComment = (commentId: number) => {
     setLikedComments((prev) => ({
       ...prev,
       [commentId]: !prev[commentId],
     }));
-    setComments((prev) =>
-      prev.map((comment) => {
-        if (comment.id === commentId) {
-          return {
-            ...comment,
-            likes: prev[commentId] ? comment.likes - 1 : comment.likes + 1,
-          };
-        }
-        if (isReply) {
-          return {
-            ...comment,
-            replies: comment.replies.map((reply) =>
-              reply.id === commentId
-                ? { ...reply, likes: prev[commentId] ? reply.likes - 1 : reply.likes + 1 }
-                : reply
-            ),
-          };
-        }
-        return comment;
-      })
-    );
+    setComments((prev) => toggleLikeRecursive(prev, commentId));
   };
 
-  const startEditing = (commentId: number, content: string) => {
-    setEditCommentId(commentId);
-    setEditContent(content);
-    setShowMenuId(null);
+  // Đệ quy chỉnh sửa
+  const editRecursive = (list: Comment[], commentId: number, content: string): Comment[] => {
+    return list.map((comment) => {
+      if (comment.id === commentId) {
+        return { ...comment, content, isEditing: false };
+      }
+      return { ...comment, replies: editRecursive(comment.replies, commentId, content) };
+    });
   };
 
   const saveEdit = (commentId: number) => {
-    setComments((prev) =>
-      prev.map((comment) =>
-        comment.id === commentId
-          ? { ...comment, content: editContent, isEditing: false }
-          : comment
-      )
-    );
+    setComments((prev) => editRecursive(prev, commentId, editContent));
     setEditCommentId(null);
   };
 
+  // Đệ quy xóa
+  const deleteRecursive = (list: Comment[], commentId: number): Comment[] => {
+    return list
+      .filter((comment) => comment.id !== commentId)
+      .map((comment) => ({
+        ...comment,
+        replies: deleteRecursive(comment.replies, commentId),
+      }));
+  };
+
   const deleteComment = (commentId: number) => {
-    setComments((prev) => prev.filter((comment) => comment.id !== commentId));
+    setComments((prev) => deleteRecursive(prev, commentId));
     setShowMenuId(null);
   };
 
+  // Đệ quy ẩn/hiện comment
+  const hideRecursive = (list: Comment[], commentId: number, hide: boolean): Comment[] => {
+    return list.map((comment) => {
+      if (comment.id === commentId) {
+        return { ...comment, isHidden: hide };
+      }
+      return { ...comment, replies: hideRecursive(comment.replies, commentId, hide) };
+    });
+  };
+
+  const hideComment = (commentId: number) => {
+    setComments((prev) => hideRecursive(prev, commentId, true));
+    setShowMenuId(null);
+  };
+  const showComment = (commentId: number) => {
+    setComments((prev) => hideRecursive(prev, commentId, false));
+    setShowMenuId(null);
+  };
+
+  // Hiện/ẩn menu
   const toggleMenu = (commentId: number) => {
     setShowMenuId(showMenuId === commentId ? null : commentId);
   };
 
-  // Xử lý phím Enter để đăng bình luận hoặc trả lời
+  // Xử lý Enter
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>, action: () => void) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -152,237 +174,224 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
     }
   };
 
-  return (
-    <div className="ml-4 mb-4">
-      {/* Danh sách bình luận */}
-      {comments.map((comment) => (
-        <div key={comment.id} className="relative">
-          <div className="bg-white p-3 rounded-lg mb-2 flex items-start">
-            {/* Phần 1: Avatar */}
-            <img
-              src={comment.avatarSrc}
-              alt={`${comment.author}'s avatar`}
-              className="w-10 h-10 rounded-full mr-3"
-            />
-            {/* Phần 2: Nội dung bình luận */}
-            <div className="flex-1">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="font-semibold">{comment.author}</span>
-                  <span className="text-xs text-gray-500 ml-2">
-                    {timeAgo(comment.createdAt)}
-                  </span>
-                </div>
-                {comment.author === currentUser && (
-                  <div className="relative">
-                    {/* Phần 3: Dấu ... */}
-                    <Button
-                      onClick={() => toggleMenu(comment.id)}
-                      className="text-gray-500 hover:text-gray-700 focus:outline-none"
-                    >
-                      ...
-                    </Button>
-                    {showMenuId === comment.id && (
-                      <div className="absolute right-0 mt-2 w-24 bg-white border rounded shadow-lg z-10">
-                        {!comment.isEditing ? (
+  // Render song song cho cấp 3+
+  const renderParallelComments = (comments: Comment[], currentLevel: number) => (
+    <div className="flex gap-8 mt-2">
+      {comments.map((c, idx) =>
+        renderComment(c, currentLevel, idx === comments.length - 1)
+      )}
+    </div>
+  );
+
+  // Render comment dạng cây, từ cấp 3 trở đi song song
+  const renderComment = (
+    comment: Comment,
+    level = 0,
+    isLast = false,
+    parentLevels: boolean[] = []
+  ) => (
+    <div key={comment.id} className="relative flex">
+      {/* Đường dọc cho cấp 1, 2 */}
+      {level > 0 && level < 3 && (
+        <div className="absolute left-0 top-0 bottom-0 w-6 flex flex-col items-center">
+          <div className="w-px h-full bg-gray-300" />
+        </div>
+      )}
+      {/* Đường ngang nối avatar cho cấp 1, 2 */}
+      {level > 0 && level < 3 && (
+        <div
+          className="absolute"
+          style={{
+            left: 20,
+            top: 32,
+            width: 20,
+            height: 2,
+            background: "#d1d5db",
+            zIndex: 1,
+          }}
+        />
+      )}
+      <div className={`flex-1 ${level > 0 ? "ml-8 pl-6" : ""}`}>
+        <div className="flex items-start group relative z-10">
+          <img
+            src={comment.avatarSrc}
+            alt={`User_${comment.user_id}'s avatar`}
+            className="w-10 h-10 rounded-full mr-3"
+          />
+          <div className="flex-1">
+            <div className="flex items-center">
+              <span className="font-medium text-gray-900">{`User_${comment.user_id}`}</span>
+              <span className="ml-2 text-xs text-gray-500">{getTimeAgo(comment.createdAt)}</span>
+              <div className="relative ml-auto">
+                <Button
+                  onClick={() => toggleMenu(comment.id)}
+                  className="text-gray-500 hover:text-gray-700 focus:outline-none p-1"
+                >
+                  ...
+                </Button>
+                {showMenuId === comment.id && (
+                  <div className="absolute right-0 mt-2 w-32 bg-white border rounded-md shadow-lg z-10">
+                    {comment.user_id === currentUserId ? (
+                      <>
+                        {editCommentId !== comment.id && (
                           <>
                             <Button
-                              onClick={() => startEditing(comment.id, comment.content)}
+                              onClick={() => {
+                                setEditCommentId(comment.id);
+                                setEditContent(comment.content);
+                                setShowMenuId(null);
+                              }}
                               className="block w-full text-left px-4 py-2 text-blue-500 hover:bg-gray-100"
                             >
-                              Edit
+                              Chỉnh sửa
                             </Button>
                             <Button
                               onClick={() => deleteComment(comment.id)}
                               className="block w-full text-left px-4 py-2 text-red-500 hover:bg-gray-100"
                             >
-                              Delete
+                              Xóa
                             </Button>
                           </>
-                        ) : (
+                        )}
+                        {editCommentId === comment.id && (
                           <Button
                             onClick={() => saveEdit(comment.id)}
                             className="block w-full text-left px-4 py-2 text-green-500 hover:bg-gray-100"
                           >
-                            Save
+                            Lưu
                           </Button>
                         )}
-                      </div>
+                      </>
+                    ) : (
+                      <>
+                        {!comment.isHidden ? (
+                          <Button
+                            onClick={() => hideComment(comment.id)}
+                            className="block w-full text-left px-4 py-2 text-yellow-500 hover:bg-gray-100"
+                          >
+                            Ẩn
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() => showComment(comment.id)}
+                            className="block w-full text-left px-4 py-2 text-blue-500 hover:bg-gray-100"
+                          >
+                            Hiện lại
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
               </div>
-              {comment.isEditing ? (
+            </div>
+            {editCommentId === comment.id ? (
+              <input
+                type="text"
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="w-full p-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onKeyPress={(e) => handleKeyPress(e, () => saveEdit(comment.id))}
+              />
+            ) : (
+              <p className="mt-1 text-gray-700 break-words">
+                {comment.isHidden ? "[Bình luận đã bị ẩn]" : comment.content}
+              </p>
+            )}
+            <div className="flex gap-4 mt-1 text-sm text-gray-600">
+              <Button
+                onClick={() => toggleLikeComment(comment.id)}
+                className="flex items-center gap-1 hover:text-red-500 focus:outline-none"
+              >
+                <Heart
+                  size={16}
+                  color={likedComments[comment.id] ? "#ef4444" : "gray"}
+                  fill={likedComments[comment.id] ? "#ef4444" : "none"}
+                />
+                {comment.likes} Thích
+              </Button>
+              <Button
+                onClick={() => setReplyTo(comment.id)}
+                className="hover:text-blue-500 focus:outline-none"
+              >
+                Trả lời
+              </Button>
+            </div>
+            {replyTo === comment.id && (
+              <div className="flex items-start mt-2">
+                <img
+                  src="https://tse3.mm.bing.net/th/id/OIP.cVIjZO1CHBYfqIB04Kb9LgHaFj?w=1400&h=1050&rs=1&pid=ImgDetMain&o=7&rm=3"
+                  alt={`${currentUser}'s avatar`}
+                  className="w-8 h-8 rounded-full mr-3"
+                />
                 <input
                   type="text"
-                  value={editContent}
-                  onChange={(e) => setEditContent(e.target.value)}
-                  className="w-full p-1 border rounded mt-1"
-                  onKeyPress={(e) => handleKeyPress(e, () => saveEdit(comment.id))}
+                  placeholder="Viết trả lời của bạn..."
+                  value={newReply}
+                  onChange={(e) => setNewReply(e.target.value)}
+                  className="flex-1 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onKeyPress={(e) => handleKeyPress(e, () => addReply(comment.id))}
                 />
-              ) : (
-                <div className="text-gray-700 mt-1">{comment.content}</div>
-              )}
-              <div className="flex gap-6 text-gray-500 text-sm mt-1">
                 <Button
-                  className="flex items-center gap-1 focus:outline-none cursor-pointer"
-                  onClick={() => toggleLikeComment(comment.id)}
+                  onClick={() => addReply(comment.id)}
+                  className="ml-2 px-4 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600"
                 >
-                  <Heart
-                    size={16}
-                    color={likedComments[comment.id] ? "#ef4444" : "gray"}
-                    fill={likedComments[comment.id] ? "#ef4444" : "none"}
-                  />
-                  {comment.likes} Thích
-                </Button>
-                <Button
-                  className="text-gray-500 hover:text-blue-500"
-                  onClick={() => setReplyTo(comment.id)}
-                >
-                  Trả lời
+                  Đăng
                 </Button>
               </div>
-            </div>
+            )}
+            {/* Render replies: cấp 0,1,2 là cây, cấp 3+ song song */}
+            {comment.replies && comment.replies.length > 0 && (
+              level < 2
+                ? <div className="mt-4">{comment.replies.map((reply, idx) =>
+                    renderComment(reply, level + 1, idx === comment.replies.length - 1)
+                  )}</div>
+                : renderParallelComments(comment.replies, level + 1)
+            )}
           </div>
-          {/* Ô nhập trả lời, hiển thị ngay dưới comment cha */}
-          {replyTo === comment.id && (
-            <div className="relative ml-14 mt-2">
-              <div className="absolute left-0 top-0 h-full border-l-2 border-gray-300"></div>
-              <div className="bg-white p-3 rounded-lg flex items-start relative ml-4">
-                <img
-                  src={comment.avatarSrc} // Sử dụng avatar của comment cha
-                  alt={`${comment.author}'s avatar`}
-                  className="w-10 h-10 rounded-full mr-3"
-                />
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    placeholder="Viết trả lời của bạn..."
-                    value={newReply}
-                    onChange={(e) => setNewReply(e.target.value)}
-                    className="w-full p-2 border rounded"
-                    onKeyPress={(e) => handleKeyPress(e, () => addReply(comment.id))}
-                  />
-                  <Button
-                    onClick={() => addReply(comment.id)}
-                    className="mt-2 bg-blue-500 text-white hover:bg-blue-600"
-                  >
-                    Đăng trả lời
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-          {/* Hiển thị các trả lời con */}
-          {comment.replies.map((reply) => (
-            <div key={reply.id} className="relative ml-14 mt-2">
-              <div className="absolute left-0 top-0 h-full border-l-2 border-gray-300"></div>
-              <div className="bg-white p-3 rounded-lg flex items-start relative ml-4">
-                <img
-                  src={reply.avatarSrc}
-                  alt={`${reply.author}'s avatar`}
-                  className="w-10 h-10 rounded-full mr-3"
-                />
-                <div className="flex-1">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <span className="font-semibold">{reply.author}</span>
-                      <span className="text-xs text-gray-500 ml-2">
-                        {timeAgo(reply.createdAt)}
-                      </span>
-                    </div>
-                    {reply.author === currentUser && (
-                      <div className="relative">
-                        <Button
-                          onClick={() => toggleMenu(reply.id)}
-                          className="text-gray-500 hover:text-gray-700 focus:outline-none"
-                        >
-                          ...
-                        </Button>
-                        {showMenuId === reply.id && (
-                          <div className="absolute right-0 mt-2 w-24 bg-white border rounded shadow-lg z-10">
-                            {!reply.isEditing ? (
-                              <>
-                                <Button
-                                  onClick={() => startEditing(reply.id, reply.content)}
-                                  className="block w-full text-left px-4 py-2 text-blue-500 hover:bg-gray-100"
-                                >
-                                  Edit
-                                </Button>
-                                <Button
-                                  onClick={() => deleteComment(reply.id)}
-                                  className="block w-full text-left px-4 py-2 text-red-500 hover:bg-gray-100"
-                                >
-                                  Delete
-                                </Button>
-                              </>
-                            ) : (
-                              <Button
-                                onClick={() => saveEdit(reply.id)}
-                                className="block w-full text-left px-4 py-2 text-green-500 hover:bg-gray-100"
-                              >
-                                Save
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {reply.isEditing ? (
-                    <input
-                      type="text"
-                      value={editContent}
-                      onChange={(e) => setEditContent(e.target.value)}
-                      className="w-full p-1 border rounded mt-1"
-                      onKeyPress={(e) => handleKeyPress(e, () => saveEdit(reply.id))}
-                    />
-                  ) : (
-                    <div className="text-gray-700 mt-1">{reply.content}</div>
-                  )}
-                  <div className="flex gap-6 text-gray-500 text-sm mt-1">
-                    <Button
-                      className="flex items-center gap-1 focus:outline-none cursor-pointer"
-                      onClick={() => toggleLikeComment(reply.id, true)}
-                    >
-                      <Heart
-                        size={16}
-                        color={likedComments[reply.id] ? "#ef4444" : "gray"}
-                        fill={likedComments[reply.id] ? "#ef4444" : "none"}
-                      />
-                      {reply.likes} Thích
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
-      ))}
+        {/* Đường kẻ phía dưới avatar nếu có replies và là cấp 0,1 */}
+        {comment.replies && comment.replies.length > 0 && level < 2 && (
+          <div
+            className="absolute"
+            style={{
+              left: 28,
+              top: 56,
+              width: 2,
+              height: 24,
+              background: "#d1d5db",
+              zIndex: 0,
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
 
-      {/* Ô nhập bình luận */}
-      <div className="mt-2 flex items-start">
+  return (
+    <div className="mb-6 ml-4">
+      {comments.map((comment) => renderComment(comment))}
+      {/* Add new comment */}
+      <div className="flex items-start mt-4">
         <img
           src="https://tse3.mm.bing.net/th/id/OIP.cVIjZO1CHBYfqIB04Kb9LgHaFj?w=1400&h=1050&rs=1&pid=ImgDetMain&o=7&rm=3"
           alt={`${currentUser}'s avatar`}
           className="w-10 h-10 rounded-full mr-3"
         />
-        <div className="flex-1">
-          <input
-            type="text"
-            placeholder="Viết bình luận của bạn..."
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            className="w-full p-2 border rounded"
-            onKeyPress={(e) => handleKeyPress(e, addComment)}
-          />
-          <Button
-            onClick={addComment}
-            className="mt-2 bg-blue-500 text-white hover:bg-blue-600"
-          >
-            Đăng bình luận
-          </Button>
-        </div>
+        <input
+          type="text"
+          placeholder="Viết bình luận của bạn..."
+          value={newComment}
+          onChange={(e) => setNewComment(e.target.value)}
+          className="flex-1 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onKeyPress={(e) => handleKeyPress(e, addComment)}
+        />
+        <Button
+          onClick={addComment}
+          className="ml-2 px-4 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+        >
+          Đăng
+        </Button>
       </div>
     </div>
   );

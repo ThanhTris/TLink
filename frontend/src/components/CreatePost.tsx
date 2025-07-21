@@ -2,53 +2,21 @@ import React, { useState } from "react";
 import Button from "./Button";
 import Select from "react-select";
 
-// Dữ liệu tĩnh lấy từ Sidebar
 const tagOptions = [
-  {
-    parent: "Thảo luận chung",
-    children: ["Giới thiệu – Làm quen", "Chuyện ngoài IT (off-topic)"],
-  },
+  { parent: "Thảo luận chung", children: ["Giới thiệu – Làm quen", "Chuyện ngoài IT (off-topic)"] },
   {
     parent: "Lập trình",
-    children: [
-      "HTML",
-      "CSS",
-      "JavaScript",
-      "React",
-      "Node.js",
-      "Java",
-      "PHP",
-      "Android",
-      "iOS",
-      "Flutter",
-    ],
+    children: ["HTML", "CSS", "JavaScript", "React", "Node.js", "Java", "PHP", "Android", "iOS", "Flutter"],
   },
-  {
-    parent: "Hệ điều hành",
-    children: ["Windows", "Linux / Ubuntu", "macOS"],
-  },
-  {
-    parent: "Bảo mật & mạng",
-    children: ["An ninh mạng", "Hệ thống mạng (cấu hình, lỗi…)"],
-  },
-  {
-    parent: "Tài nguyên học tập",
-    children: ["Tài liệu – Khóa học", "Chia sẻ kinh nghiệm học IT"],
-  },
-  {
-    parent: "Tuyển dụng & nghề nghiệp",
-    children: ["Việc làm IT", "CV, phỏng vấn, lộ trình"],
-  },
+  { parent: "Hệ điều hành", children: ["Windows", "Linux / Ubuntu", "macOS"] },
+  { parent: "Bảo mật & mạng", children: ["An ninh mạng", "Hệ thống mạng (cấu hình, lỗi…)"] },
+  { parent: "Tài nguyên học tập", children: ["Tài liệu – Khóa học", "Chia sẻ kinh nghiệm học IT"] },
+  { parent: "Tuyển dụng & nghề nghiệp", children: ["Việc làm IT", "CV, phỏng vấn, lộ trình"] },
 ];
 
 interface CreatePostProps {
   onCancel?: () => void;
-  onSubmit?: (data: {
-    title: string;
-    content: string;
-    tagParent: string;
-    tagChild: string;
-  }) => void;
+  onSubmit?: (data: { title: string; content: string; user_id: number; tagParent: string; tagChild: string }) => void;
 }
 
 const CreatePost: React.FC<CreatePostProps> = ({ onCancel, onSubmit }) => {
@@ -56,19 +24,15 @@ const CreatePost: React.FC<CreatePostProps> = ({ onCancel, onSubmit }) => {
   const [content, setContent] = useState("");
   const [tagParent, setTagParent] = useState(tagOptions[0]?.parent || "");
   const [tagChild, setTagChild] = useState(tagOptions[0]?.children[0] || "");
+  const user_id = 1;
 
-  const parentOptions = tagOptions.map((tag) => ({
-    value: tag.parent,
-    label: tag.parent,
-  }));
-
+  const parentOptions = tagOptions.map((tag) => ({ value: tag.parent, label: tag.parent }));
   const childOptions =
-    tagOptions
-      .find((t) => t.parent === tagParent)
-      ?.children.map((child) => ({
-        value: child,
-        label: child,
-      })) || [];
+    tagOptions.find((t) => t.parent === tagParent)?.children.map((child) => ({ value: child, label: child })) || [];
+
+  const handleSubmit = () => {
+    onSubmit?.({ title, content, user_id, tagParent, tagChild });
+  };
 
   return (
     <div className="bg-gray-50 rounded-xl p-8 max-w-2xl mx-auto">
@@ -106,15 +70,8 @@ const CreatePost: React.FC<CreatePostProps> = ({ onCancel, onSubmit }) => {
               }}
               menuPlacement="auto"
               styles={{
-                menu: (base) => ({
-                  ...base,
-                  maxHeight: 200, // Giới hạn chiều cao tối đa (khoảng 8-10 item)
-                  overflowY: "auto", // Thêm thanh cuộn nếu vượt quá
-                }),
-                menuList: (base) => ({
-                  ...base,
-                  maxHeight: 200, // Đảm bảo menuList cũng giới hạn
-                }),
+                menu: (base) => ({ ...base, maxHeight: 200, overflowY: "auto" }),
+                menuList: (base) => ({ ...base, maxHeight: 200 }),
               }}
             />
           </div>
@@ -125,30 +82,20 @@ const CreatePost: React.FC<CreatePostProps> = ({ onCancel, onSubmit }) => {
               onChange={(opt) => setTagChild(opt?.value || "")}
               menuPlacement="auto"
               styles={{
-                menu: (base) => ({
-                  ...base,
-                  maxHeight: 200, // Giới hạn chiều cao tối đa
-                  overflowY: "auto", // Thêm thanh cuộn nếu vượt quá
-                }),
-                menuList: (base) => ({
-                  ...base,
-                  maxHeight: 200, // Đảm bảo menuList cũng giới hạn
-                }),
+                menu: (base) => ({ ...base, maxHeight: 200, overflowY: "auto" }),
+                menuList: (base) => ({ ...base, maxHeight: 200 }),
               }}
             />
           </div>
         </div>
       </div>
       <div className="flex justify-end gap-3 mt-8">
-        <Button
-          className="bg-gray-100 text-black px-6 py-2 rounded-full hover:bg-gray-200 transition"
-          onClick={onCancel}
-        >
+        <Button className="bg-gray-100 text-black px-6 py-2 rounded-full hover:bg-gray-200 transition" onClick={onCancel}>
           Hủy
         </Button>
         <Button
           className="bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-600 transition"
-          onClick={() => onSubmit?.({ title, content, tagParent, tagChild })}
+          onClick={handleSubmit}
         >
           Đăng bài
         </Button>
