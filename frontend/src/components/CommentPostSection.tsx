@@ -1,21 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Heart } from "lucide-react";
 import Button from "./Button";
 import { getTimeAgo } from "../utils/timeAgo";
 import { postService } from "../services/postService";
-
-interface Comment {
-  id: number;
-  post_id: number;
-  user_id: number;
-  content: string;
-  createdAt: Date;
-  likes: number;
-  replies: Comment[];
-  isEditing?: boolean;
-  avatarSrc: string;
-  isHidden?: boolean;
-}
+import type { Comment } from "../types/Comment";
+import { buildCommentTree } from "../utils/buildCommentTree";
 
 interface CommentSectionProps {
   initialComments: Comment[];
@@ -24,7 +13,7 @@ interface CommentSectionProps {
   post_id: number;
 }
 
-const currentUserId = 1; // Giả lập user hiện tại, bạn có thể truyền từ props
+const currentUserId = 1; // Giả lập user hiện tại
 
 const CommentPostSection: React.FC<CommentSectionProps> = ({
   initialComments,
@@ -32,132 +21,145 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
   currentUser,
   post_id,
 }) => {
-  const [comments, setComments] = useState<Comment[]>(initialComments);
+  // State lưu mảng phẳng
+  const [flatComments, setFlatComments] = useState<Comment[]>(initialComments);
+  // State lưu cây comment
+  const [comments, setComments] = useState<Comment[]>(
+    buildCommentTree(initialComments)
+  );
   const [newComment, setNewComment] = useState("");
   const [editCommentId, setEditCommentId] = useState<number | null>(null);
   const [editContent, setEditContent] = useState("");
   const [showMenuId, setShowMenuId] = useState<number | null>(null);
-  const [likedComments, setLikedComments] = useState<{ [key: number]: boolean }>({});
+  const [likedComments, setLikedComments] = useState<{
+    [key: number]: boolean;
+  }>({});
   const [replyTo, setReplyTo] = useState<number | null>(null);
   const [newReply, setNewReply] = useState("");
 
-  // Thêm bình luận mới (cấp 0)
+  // Luôn build lại cây khi flatComments thay đổi
+  useEffect(() => {
+    setComments(buildCommentTree(flatComments));
+  }, [flatComments]);
+
+  // Thêm bình luận mới (cấp 1)
   const addComment = async () => {
     if (newComment.trim()) {
       const newCommentObj: Comment = {
         id: Date.now(),
         post_id,
         user_id: currentUserId,
+        parent_id: null,
+        level: 1,
         content: newComment,
         createdAt: new Date(),
         likes: 0,
-        replies: [],
-        avatarSrc: "https://tse3.mm.bing.net/th/id/OIP.cVIjZO1CHBYfqIB04Kb9LgHaFj?w=1400&h=1050&rs=1&pid=ImgDetMain&o=7&rm=3",
+        avatarSrc:
+          "https://tse3.mm.bing.net/th/id/OIP.cVIjZO1CHBYfqIB04Kb9LgHaFj?w=1400&h=1050&rs=1&pid=ImgDetMain&o=7&rm=3",
       };
       await postService.addComment(post_id, newComment, currentUserId);
       onAddComment(newComment);
-      setComments([...comments, newCommentObj]);
+      setFlatComments([...flatComments, newCommentObj]);
       setNewComment("");
     }
   };
 
-  // Đệ quy thêm reply vào đúng comment cha
-  const addReplyRecursive = (list: Comment[], parentId: number, replyObj: Comment): Comment[] => {
-    return list.map((comment) => {
-      if (comment.id === parentId) {
-        return { ...comment, replies: [...comment.replies, replyObj] };
-      }
-      return { ...comment, replies: addReplyRecursive(comment.replies, parentId, replyObj) };
-    });
-  };
-
   // Thêm trả lời cho bất kỳ cấp nào
-  const addReply = async (parentId: number) => {
-    if (newReply.trim()) {
-      const replyObj: Comment = {
-        id: Date.now() + Math.random(),
-        post_id,
-        user_id: currentUserId,
-        content: newReply,
-        createdAt: new Date(),
-        likes: 0,
-        replies: [],
-        avatarSrc: "https://tse3.mm.bing.net/th/id/OIP.cVIjZO1CHBYfqIB04Kb9LgHaFj?w=1400&h=1050&rs=1&pid=ImgDetMain&o=7&rm=3",
-      };
-      await postService.addComment(post_id, newReply, currentUserId);
-      setComments((prev) => addReplyRecursive(prev, parentId, replyObj));
-      setNewReply("");
-      setReplyTo(null);
+  // const addReply = async (parent: Comment) => {
+  //   if (newReply.trim()) {
+  //     const replyObj: Comment = {
+  //       id: Date.now() + Math.random(),
+  //       post_id,
+  //       user_id: currentUserId,
+  //       parent_id: parent.id,
+  //       level: Math.min((parent.level || 1) + 1, 3),
+  //       content: newReply,
+  //       createdAt: new Date(),
+  //       likes: 0,
+  //       avatarSrc:
+  //         "https://tse3.mm.bing.net/th/id/OIP.cVIjZO1CHBYfqIB04Kb9LgHaFj?w=1400&h=1050&rs=1&pid=ImgDetMain&o=7&rm=3",
+  //     };
+  //     await postService.addComment(post_id, newReply, currentUserId);
+  //     setFlatComments([...flatComments, replyObj]);
+  //     setNewReply("");
+  //     setReplyTo(null);
+  //   }
+  // };
+  const addReply = async (parent: Comment) => {
+  if (newReply.trim()) {
+    // Nếu reply vào cấp 3 hoặc sâu hơn, set parent_id là cha cấp 3 gần nhất, level = 3
+    let replyParent = parent;
+    while (replyParent.level > 3 && replyParent.parent_id !== null) {
+      const found = flatComments.find((c) => c.id === replyParent.parent_id);
+      if (!found) break;
+      replyParent = found;
     }
-  };
+    const replyObj: Comment = {
+      id: Date.now() + Math.random(),
+      post_id,
+      user_id: currentUserId,
+      parent_id: replyParent.level >= 3 ? replyParent.id : parent.id,
+      level: replyParent.level >= 3 ? 3 : (parent.level || 1) + 1,
+      content: newReply,
+      createdAt: new Date(),
+      likes: 0,
+      avatarSrc:
+        "https://tse3.mm.bing.net/th/id/OIP.cVIjZO1CHBYfqIB04Kb9LgHaFj?w=1400&h=1050&rs=1&pid=ImgDetMain&o=7&rm=3",
+    };
+    await postService.addComment(post_id, newReply, currentUserId);
+    setFlatComments([...flatComments, replyObj]);
+    setNewReply("");
+    setReplyTo(null);
+  }};
 
-  // Đệ quy like comment/reply
-  const toggleLikeRecursive = (list: Comment[], commentId: number): Comment[] => {
-    return list.map((comment) => {
-      if (comment.id === commentId) {
-        return {
-          ...comment,
-          likes: likedComments[commentId] ? comment.likes - 1 : comment.likes + 1,
-        };
-      }
-      return { ...comment, replies: toggleLikeRecursive(comment.replies, commentId) };
-    });
-  };
-
+  // Like comment/reply
   const toggleLikeComment = (commentId: number) => {
     setLikedComments((prev) => ({
       ...prev,
       [commentId]: !prev[commentId],
     }));
-    setComments((prev) => toggleLikeRecursive(prev, commentId));
+    setFlatComments((prev) =>
+      prev.map((c) =>
+        c.id === commentId
+          ? {
+              ...c,
+              likes: likedComments[commentId] ? c.likes - 1 : c.likes + 1,
+            }
+          : c
+      )
+    );
   };
 
-  // Đệ quy chỉnh sửa
-  const editRecursive = (list: Comment[], commentId: number, content: string): Comment[] => {
-    return list.map((comment) => {
-      if (comment.id === commentId) {
-        return { ...comment, content, isEditing: false };
-      }
-      return { ...comment, replies: editRecursive(comment.replies, commentId, content) };
-    });
-  };
-
+  // Chỉnh sửa comment
   const saveEdit = (commentId: number) => {
-    setComments((prev) => editRecursive(prev, commentId, editContent));
+    setFlatComments((prev) =>
+      prev.map((c) => (c.id === commentId ? { ...c, content: editContent } : c))
+    );
     setEditCommentId(null);
   };
 
-  // Đệ quy xóa
-  const deleteRecursive = (list: Comment[], commentId: number): Comment[] => {
-    return list
-      .filter((comment) => comment.id !== commentId)
-      .map((comment) => ({
-        ...comment,
-        replies: deleteRecursive(comment.replies, commentId),
-      }));
-  };
-
+  // Xóa comment (và các reply con)
   const deleteComment = (commentId: number) => {
-    setComments((prev) => deleteRecursive(prev, commentId));
+    // Xóa comment và tất cả các con của nó
+    const deleteRecursive = (list: Comment[], id: number): Comment[] =>
+      list
+        .filter((c) => c.id !== id && c.parent_id !== id)
+        .map((c) => ({ ...c }));
+    setFlatComments((prev) => deleteRecursive(prev, commentId));
     setShowMenuId(null);
   };
 
-  // Đệ quy ẩn/hiện comment
-  const hideRecursive = (list: Comment[], commentId: number, hide: boolean): Comment[] => {
-    return list.map((comment) => {
-      if (comment.id === commentId) {
-        return { ...comment, isHidden: hide };
-      }
-      return { ...comment, replies: hideRecursive(comment.replies, commentId, hide) };
-    });
-  };
-
+  // Ẩn/hiện comment
   const hideComment = (commentId: number) => {
-    setComments((prev) => hideRecursive(prev, commentId, true));
+    setFlatComments((prev) =>
+      prev.map((c) => (c.id === commentId ? { ...c, isHidden: true } : c))
+    );
     setShowMenuId(null);
   };
   const showComment = (commentId: number) => {
-    setComments((prev) => hideRecursive(prev, commentId, false));
+    setFlatComments((prev) =>
+      prev.map((c) => (c.id === commentId ? { ...c, isHidden: false } : c))
+    );
     setShowMenuId(null);
   };
 
@@ -167,7 +169,10 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
   };
 
   // Xử lý Enter
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>, action: () => void) => {
+  const handleKeyPress = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    action: () => void
+  ) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       action();
@@ -175,7 +180,10 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
   };
 
   // Render song song cho cấp 3+
-  const renderParallelComments = (comments: Comment[], currentLevel: number) => (
+  const renderParallelComments = (
+    comments: Comment[],
+    currentLevel: number
+  ) => (
     <div className="flex gap-8 mt-2">
       {comments.map((c, idx) =>
         renderComment(c, currentLevel, idx === comments.length - 1)
@@ -184,21 +192,16 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
   );
 
   // Render comment dạng cây, từ cấp 3 trở đi song song
-  const renderComment = (
-    comment: Comment,
-    level = 0,
-    isLast = false,
-    parentLevels: boolean[] = []
-  ) => (
+  const renderComment = (comment: Comment, level = 1, isLast = false) => (
     <div key={comment.id} className="relative flex">
       {/* Đường dọc cho cấp 1, 2 */}
-      {level > 0 && level < 3 && (
+      {level > 1 && level < 4 && (
         <div className="absolute left-0 top-0 bottom-0 w-6 flex flex-col items-center">
           <div className="w-px h-full bg-gray-300" />
         </div>
       )}
       {/* Đường ngang nối avatar cho cấp 1, 2 */}
-      {level > 0 && level < 3 && (
+      {level > 1 && level < 4 && (
         <div
           className="absolute"
           style={{
@@ -211,7 +214,7 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
           }}
         />
       )}
-      <div className={`flex-1 ${level > 0 ? "ml-8 pl-6" : ""}`}>
+      <div className={`flex-1 ${level > 1 ? "ml-8 pl-6" : ""}`}>
         <div className="flex items-start group relative z-10">
           <img
             src={comment.avatarSrc}
@@ -221,7 +224,9 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
           <div className="flex-1">
             <div className="flex items-center">
               <span className="font-medium text-gray-900">{`User_${comment.user_id}`}</span>
-              <span className="ml-2 text-xs text-gray-500">{getTimeAgo(comment.createdAt)}</span>
+              <span className="ml-2 text-xs text-gray-500">
+                {getTimeAgo(comment.createdAt)}
+              </span>
               <div className="relative ml-auto">
                 <Button
                   onClick={() => toggleMenu(comment.id)}
@@ -291,11 +296,28 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 className="w-full p-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onKeyPress={(e) => handleKeyPress(e, () => saveEdit(comment.id))}
+                onKeyPress={(e) =>
+                  handleKeyPress(e, () => saveEdit(comment.id))
+                }
               />
             ) : (
               <p className="mt-1 text-gray-700 break-words">
-                {comment.isHidden ? "[Bình luận đã bị ẩn]" : comment.content}
+                {comment.isHidden ? (
+                  "[Bình luận đã bị ẩn]"
+                ) : (
+                  <>
+                    {comment.parent_id !== null && (
+                      <b>
+                        @
+                        {`User_${
+                          flatComments.find((u) => u.id === comment.parent_id)
+                            ?.user_id || "?"
+                        }`}{" "}
+                      </b>
+                    )}
+                    {comment.content}
+                  </>
+                )}
               </p>
             )}
             <div className="flex gap-4 mt-1 text-sm text-gray-600">
@@ -324,43 +346,59 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
                   alt={`${currentUser}'s avatar`}
                   className="w-8 h-8 rounded-full mr-3"
                 />
-                <input
-                  type="text"
-                  placeholder="Viết trả lời của bạn..."
-                  value={newReply}
-                  onChange={(e) => setNewReply(e.target.value)}
-                  className="flex-1 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  onKeyPress={(e) => handleKeyPress(e, () => addReply(comment.id))}
-                />
+                <div className="flex-1 flex items-center border rounded-md p-2 bg-white">
+                  <span className="font-bold text-gray-700 mr-1">
+                    @{`User_${comment.user_id}`}
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Viết trả lời của bạn..."
+                    value={newReply}
+                    onChange={(e) => setNewReply(e.target.value)}
+                    className="flex-1 border-none outline-none focus:ring-0"
+                    onKeyPress={(e) =>
+                      handleKeyPress(e, () => addReply(comment))
+                    }
+                    style={{ background: "transparent" }}
+                  />
+                </div>
                 <Button
-                  onClick={() => addReply(comment.id)}
+                  onClick={() => addReply(comment)}
                   className="ml-2 px-4 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600"
                 >
                   Đăng
                 </Button>
               </div>
             )}
-            {/* Render replies: cấp 0,1,2 là cây, cấp 3+ song song */}
-            {comment.replies && comment.replies.length > 0 && (
-              level < 2
-                ? <div className="mt-4">{comment.replies.map((reply, idx) =>
-                    renderComment(reply, level + 1, idx === comment.replies.length - 1)
-                  )}</div>
-                : renderParallelComments(comment.replies, level + 1)
-            )}
+            {/* Render replies: cấp 1,2 là cây, cấp 3+ song song */}
+            {comment.replies &&
+              comment.replies.length > 0 &&
+              (comment.level < 3 ? (
+                <div className="mt-4">
+                  {comment.replies.map((reply, idx) =>
+                    renderComment(
+                      reply,
+                      comment.level + 1,
+                      idx === (comment.replies?.length ?? 0) - 1
+                    )
+                  )}
+                </div>
+              ) : (
+                renderParallelComments(comment.replies, comment.level + 1)
+              ))}
           </div>
         </div>
-        {/* Đường kẻ phía dưới avatar nếu có replies và là cấp 0,1 */}
-        {comment.replies && comment.replies.length > 0 && level < 2 && (
+        {/* Đường kẻ phía dưới avatar nếu có replies và là cấp 1,2 */}
+        {comment.replies && comment.replies.length > 0 && comment.level < 3 && (
           <div
             className="absolute"
             style={{
               left: 28,
               top: 56,
               width: 2,
-              height: 24,
               background: "#d1d5db",
               zIndex: 0,
+              height: "calc(100% - 48px)",
             }}
           />
         )}
