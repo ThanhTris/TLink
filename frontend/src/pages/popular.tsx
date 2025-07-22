@@ -254,12 +254,12 @@ const mockPosts = [
   },
 ];
 
-const home: React.FC = () => {
+const popular: React.FC = () => {
   const [showCreate, setShowCreate] = useState(false);
 
   return (
     <div className="px-16 py-8">
-      <ContentHeader title="Mới nhất" onCreate={() => setShowCreate(true)} />
+      <ContentHeader title="Phổ biến nhất" onCreate={() => setShowCreate(true)} />
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
           <div className="w-full max-w-2xl">
@@ -311,4 +311,4 @@ const home: React.FC = () => {
     </div>
   );
 };
-export default home;
+export default popular;

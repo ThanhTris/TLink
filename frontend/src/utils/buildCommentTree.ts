@@ -1,4 +1,4 @@
-import type { Comment } from "../types/Comment";
+import type { Comment } from "../types/comment";
 
 export function buildCommentTree(
   flatComments: Comment[]

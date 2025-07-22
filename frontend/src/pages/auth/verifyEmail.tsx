@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import Button from "../components/Button";
-import forum from "../assets/forum.png";
+import Button from "../../components/Button";
+import forum from "../../assets/forum.png";
 import { useNavigate } from "react-router-dom";
 
-const VerifyEmail: React.FC = () => {
+const verifyEmail: React.FC = () => {
   const [verificationCode, setVerificationCode] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -106,4 +106,4 @@ const VerifyEmail: React.FC = () => {
   );
 };
 
-export default VerifyEmail;
+export default verifyEmail;

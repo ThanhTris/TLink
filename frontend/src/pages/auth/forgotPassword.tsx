@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import Button from "../components/Button";
-import forum from "../assets/forum.png";
-import { maskEmailOrPhone } from "../utils/maskEmailOrPhone";
+import Button from "../../components/Button";
+import forum from "../../assets/forum.png";
+import { maskEmailOrPhone } from "../../utils/maskEmailOrPhone";
 import { useNavigate } from "react-router-dom";
 
-const ForgotPassword: React.FC = () => {
+const forgotPassword: React.FC = () => {
   const [step, setStep] = useState<"input" | "otp">("input"); // Trạng thái bước: nhập email/phone hoặc nhập OTP
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
@@ -153,4 +153,4 @@ const ForgotPassword: React.FC = () => {
   );
 };
 
-export default ForgotPassword;
+export default forgotPassword;

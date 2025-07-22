@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import Button from "../components/Button";
-import forum from "../assets/forum.png";
+import Button from "../../components/Button";
+import forum from "../../assets/forum.png";
 import { useNavigate } from "react-router-dom";
 
-const ResetPassword: React.FC = () => {
+const resetPassword: React.FC = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -71,4 +71,4 @@ const ResetPassword: React.FC = () => {
   );
 };
 
-export default ResetPassword;
+export default resetPassword;

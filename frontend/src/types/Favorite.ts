@@ -1,4 +1,4 @@
-export interface Favorite {
+export interface favorite {
   id: number;
   post_id: number;
   user_id: number;

@@ -1,11 +1,10 @@
 import React, { useState } from "react";
-import ContentHeader from "../components/ContentHeader";
-import CreatePost from "../components/CreatePost";
-import Content from "../components/ContentPost";
-import { getTimeAgo } from "../utils/timeAgo";
-import type { Comment } from "../types/comment";
-import type { like } from "../types/like";
-import type { favorite } from "../types/favorite";
+import ContentHeader from "../../components/ContentHeader";
+import CreatePost from "../../components/CreatePost";
+import Content from "../../components/ContentPost";
+import type { Comment } from "../../types/comment";
+import type { like } from "../../types/like";
+import type { favorite } from "../../types/favorite";
 
 const mockComments: Comment[] = [
   // Post 1
@@ -254,12 +253,12 @@ const mockPosts = [
   },
 ];
 
-const home: React.FC = () => {
+const Freelance: React.FC = () => {
   const [showCreate, setShowCreate] = useState(false);
 
   return (
     <div className="px-16 py-8">
-      <ContentHeader title="Mới nhất" onCreate={() => setShowCreate(true)} />
+      <ContentHeader title="về Freelance" onCreate={() => setShowCreate(true)} />
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
           <div className="w-full max-w-2xl">
@@ -305,10 +304,9 @@ const home: React.FC = () => {
           initialComments={post.initialComments}
           initialLikes={post.initialLikes}
           initialFavorites={post.initialFavorites}
-          //getTimeAgo={getTimeAgo}
         />
       ))}
     </div>
   );
 };
-export default home;
+export default Freelance;

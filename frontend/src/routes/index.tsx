@@ -1,21 +1,39 @@
 import type { RouteObject } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
-import Home from "../pages/Home";
-import Forum from "../pages/Forum";
-import Login from "../pages/Login";
-import Register from "../pages/Register";
-import VerifyEmail from "../pages/VerifyEmail";
-import ForgotPassword from "../pages/ForgotPassword";
-import ResetPassword from "../pages/ResetPassword";
 
-const routes: RouteObject[] = [
-  { path: "/", element: <MainLayout><Home /></MainLayout> },
-  { path: "/forum", element: <MainLayout><Forum /></MainLayout> },
-  { path: "/login", element: <MainLayout hideLayout={true}><Login /></MainLayout> },
-  { path: "/register", element: <MainLayout hideLayout={true}><Register /></MainLayout> },
-  { path: "/register/verify-email", element: <MainLayout hideLayout={true}><VerifyEmail /></MainLayout> },
-  { path: "/login/forgot-password", element: <MainLayout hideLayout={true}><ForgotPassword /></MainLayout> },
-  { path: "/login/reset-password", element: <MainLayout hideLayout={true}><ResetPassword /></MainLayout> },
-];
+// Import động tất cả page trong src/pages (kể cả trong subfolder)
+const modules = import.meta.glob("../pages/**/*.tsx", { eager: true });
+
+const routes: RouteObject[] = Object.entries(modules)
+  .map(([filePath, mod]) => {
+    // Ép kiểu cho mod
+    const module = mod as { default: React.ComponentType };
+
+    // Lấy path từ filePath, ví dụ ../pages/dev/web.tsx => /dev/web
+    let path = filePath
+      .replace("../pages", "")
+      .replace(/\/index\.tsx$/, "") // /dev/index.tsx => /dev
+      .replace(/\.tsx$/, "")
+      .toLowerCase();
+
+    // Nếu path rỗng thì là trang chủ
+    if (path === "" || path === "/home") path = "/";
+
+    // Nếu là trang auth thì hideLayout
+    const isAuth = path.startsWith("/auth");
+
+    // Nếu không export default thì bỏ qua
+    if (!module.default) return null;
+
+    return {
+      path,
+      element: (
+        <MainLayout hideLayout={isAuth}>
+          <module.default />
+        </MainLayout>
+      ),
+    };
+  })
+  .filter(Boolean) as RouteObject[];
 
 export default routes;

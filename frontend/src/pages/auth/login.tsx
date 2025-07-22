@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import Button from "../components/Button";
-import forum from "../assets/forum.png";
-import facebook from "../assets/facebook-logo.png";
-import google from "../assets/google-logo.png";
+import Button from "../../components/Button";
+import forum from "../../assets/forum.png";
+import facebook from "../../assets/facebook-logo.png";
+import google from "../../assets/google-logo.png";
 import { useNavigate } from "react-router-dom";
 
-const Login: React.FC = () => {
+const login: React.FC = () => {
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -164,4 +164,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default login;

@@ -1,4 +1,4 @@
-export interface Like {
+export interface like {
   id: number;
   comment_id: number;
   user_id: number;

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import Button from "../components/Button";
-import forum from "../assets/forum.png";
+import Button from "../../components/Button";
+import forum from "../../assets/forum.png";
 import { useNavigate } from "react-router-dom";
 
-const Register: React.FC = () => {
+const register: React.FC = () => {
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [fullname, setFullname] = useState("");
   const [password, setPassword] = useState("");
@@ -133,4 +133,4 @@ const Register: React.FC = () => {
   );
 };
 
-export default Register;
+export default register;

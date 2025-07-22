@@ -14,10 +14,10 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, username }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const handleLogin = () => {
-    navigate('/login');
+    navigate('/auth/login');
   };
   const handleRegister = () => {
-    navigate('/register');
+    navigate('/auth/register');
   };
 
   // Đóng menu khi click ra ngoài
@@ -42,7 +42,7 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, username }) => {
       <div className="flex items-center justify-around ml-auto min-w-70 ">
         {isLoggedIn ? (
           <div className="relative" ref={menuRef}>
-            <button
+            <Button
               className="flex items-center gap-2 p-2 rounded-lg cursor-pointer focus:outline-none hover:bg-gray-100"
               onClick={() => setOpenMenu((v) => !v)}
             >
@@ -53,33 +53,33 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, username }) => {
               />
               <span className="text-lg">{username}</span>
               <ChevronDown className="w-4 h-4" />
-            </button>
+            </Button>
             {openMenu && (
-              <div className="absolute left-0 z-50 py-2 mt-2 bg-white shadow-lg w-55 rounded-xl">
+              <div className="absolute left-0 z-50 py-2 mt-2 bg-white shadow-lg hover:cursor-pointer w-55 rounded-xl">
                 <a
-                  href="/my-posts"
+                  href="/user/my-posts"
                   className="block w-full px-4 py-2 text-left text-gray-800 hover:bg-gray-100"
                 >
                   Bài viết của tôi
                 </a>
                 <a
-                  href="/settings"
+                  href="/user/settings"
                   className="block w-full px-4 py-2 text-left text-gray-800 hover:bg-gray-100"
                 >
                   Cài đặt
                 </a>
                 <a
-                  href="/change-password"
+                  href="/user/change-password"
                   className="block w-full px-4 py-2 text-left text-gray-800 hover:bg-gray-100"
                 >
                   Đổi mật khẩu
                 </a>
-                <button
-                  className="block w-full px-4 py-2 text-left text-red-500 hover:bg-gray-100"
+                <Button
+                  className="block w-full px-4 py-2 text-left text-red-500 hover:bg-gray-100 cursor-pointer"
                   onClick={handleLogin}
                 >
                   Đăng xuất
-                </button>
+                </Button>
               </div>
             )}
           </div>

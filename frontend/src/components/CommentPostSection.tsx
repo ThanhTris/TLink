@@ -3,7 +3,7 @@ import { Heart } from "lucide-react";
 import Button from "./Button";
 import { getTimeAgo } from "../utils/timeAgo";
 import { postService } from "../services/postService";
-import type { Comment } from "../types/Comment";
+import type { Comment } from "../types/comment";
 import { buildCommentTree } from "../utils/buildCommentTree";
 
 interface CommentSectionProps {

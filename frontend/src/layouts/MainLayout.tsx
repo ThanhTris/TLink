@@ -12,7 +12,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, hideLayout = false })
 
   return (
     <div>
-      <Header isLoggedIn={false} />
+      <Header isLoggedIn={true} username="Nguyễn Thanh Trí" />
       <div className="flex w-full">
         <Sidebar />
         <main className="flex-1 ml-64 mt-16">{children}</main>
