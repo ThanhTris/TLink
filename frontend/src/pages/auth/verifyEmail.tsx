@@ -47,14 +47,14 @@ const verifyEmail: React.FC = () => {
       // Lưu thông tin đăng ký (giả lập)
       console.log("Đăng ký thành công với:", JSON.parse(tempData));
       localStorage.removeItem("tempRegisterData");
-      navigate("/login");
+      navigate("/auth/login");
     } else {
       setError("Mã OTP không đúng. Vui lòng thử lại.");
     }
   };
 
   const handleLoginClick = () => {
-    navigate("/login");
+    navigate("/auth/login");
   };
 
   return (

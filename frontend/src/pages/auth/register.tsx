@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Button from "../../components/Button";
 import forum from "../../assets/forum.png";
 import { useNavigate } from "react-router-dom";
@@ -7,7 +7,9 @@ const register: React.FC = () => {
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [fullname, setFullname] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [gender, setGender] = useState("Nam");
+  const [birthday, setBirthday] = useState("");
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const navigate = useNavigate();
 
   const getInputType = (input: string): "email" | "phone" => {
@@ -19,56 +21,36 @@ const register: React.FC = () => {
   };
 
   const handleRegister = () => {
+    const newErrors: { [key: string]: string } = {};
+
     try {
-      const inputType = getInputType(emailOrPhone);
-
-      if (!fullname.trim()) {
-        setError("Họ tên không được để trống.");
-        return;
-      }
-
-      if (password.length < 6) {
-        setError("Mật khẩu phải có ít nhất 6 ký tự.");
-        return;
-      }
-
-      setError("");
-
-      if (inputType === "email") {
-        // Tạo mã OTP ngẫu nhiên (6 chữ số)
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiryTime = Date.now() + 5 * 60 * 1000; // 5 phút
-
-        // Lưu thông tin tạm thời (giả lập)
-        const tempData = {
-          emailOrPhone,
-          fullname,
-          password,
-          otp,
-          expiryTime,
-        };
-        localStorage.setItem("tempRegisterData", JSON.stringify(tempData));
-
-        // Điều hướng đến VerifyEmail
-        navigate("/register/verify-email");
-      } else if (inputType === "phone") {
-        // Gọi API đăng ký (giả lập)
-        console.log("Đăng ký với:", {
-          type: inputType,
-          emailOrPhone,
-          fullname,
-          password,
-        });
-        // Điều hướng đến Login sau khi đăng ký thành công
-        navigate("/login");
-      }
+      getInputType(emailOrPhone);
     } catch {
-      setError("Vui lòng nhập đúng định dạng email hoặc số điện thoại.");
+      newErrors.emailOrPhone = "Email hoặc số điện thoại không hợp lệ.";
     }
+
+    if (!fullname.trim()) {
+      newErrors.fullname = "Họ tên không được để trống.";
+    }
+
+    if (password.length < 6) {
+      newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự.";
+    }
+
+    if (!birthday) {
+      newErrors.birthday = "Vui lòng chọn ngày sinh.";
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) return;
+
+    // Đăng ký thành công (giả lập)
+    navigate("/auth/login");
   };
 
   const handleLoginClick = () => {
-    navigate("/login");
+    navigate("/auth/login");
   };
 
   return (
@@ -78,42 +60,87 @@ const register: React.FC = () => {
       </div>
       <div className="w-2/6 p-8">
         <h2 className="text-2xl font-semibold">Register to</h2>
-        <h1 className="mb-10 text-3xl font-bold text-blue-600">IT Forum</h1>
+        <h1 className="mb-4 text-3xl font-bold text-blue-600">IT Forum</h1>
 
-        <div className="mb-4">
+        <div className="mb-1.5">
           <label className="block mb-1 text-sm">Email or phone</label>
           <input
             type="text"
-            className="w-full p-3 font-semibold border rounded"
+            placeholder="Email hoặc số điện thoại"
+            className={`w-full p-3 font-semibold border rounded ${errors.emailOrPhone ? "border-red-400" : ""}`}
             value={emailOrPhone}
             onChange={(e) => setEmailOrPhone(e.target.value)}
           />
+          <div className="h-4">
+            {errors.emailOrPhone && (
+              <span className="text-xs text-red-500">{errors.emailOrPhone}</span>
+            )}
+          </div>
         </div>
 
-        <div className="mb-4">
+        <div className="mb-1.5">
           <label className="block mb-1 text-sm">Fullname</label>
           <input
             type="text"
-            className="w-full p-3 font-semibold border rounded"
+            placeholder="Họ và tên"
+            className={`w-full p-3 font-semibold border rounded ${errors.fullname ? "border-red-400" : ""}`}
             value={fullname}
             onChange={(e) => setFullname(e.target.value)}
           />
+          <div className="h-4">
+            {errors.fullname && (
+              <span className="text-xs text-red-500">{errors.fullname}</span>
+            )}
+          </div>
         </div>
 
-        <div className="mb-4">
+        <div className="mb-1.5">
           <label className="block mb-1 text-sm">Password</label>
           <input
             type="password"
-            className="w-full p-3 border rounded"
+            placeholder="Mật khẩu"
+            className={`w-full p-3 border rounded ${errors.password ? "border-red-400" : ""}`}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          <div className="h-4">
+            {errors.password && (
+              <span className="text-xs text-red-500">{errors.password}</span>
+            )}
+          </div>
         </div>
 
-        {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
+        <div className="mb-1.5">
+          <label className="block mb-1 text-sm">Gender</label>
+          <select
+            className="w-full p-3 font-semibold border rounded"
+            value={gender}
+            onChange={(e) => setGender(e.target.value)}
+          >
+            <option value="Nam">Nam</option>
+            <option value="Nữ">Nữ</option>
+            <option value="Khác">Khác</option>
+          </select>
+          <div className="h-4"></div>
+        </div>
+
+        <div className="mb-1.5">
+          <label className="block mb-1 text-sm">Birthday</label>
+          <input
+            type="date"
+            className={`w-full p-3 font-semibold border rounded ${errors.birthday ? "border-red-400" : ""}`}
+            value={birthday}
+            onChange={(e) => setBirthday(e.target.value)}
+          />
+          <div className="h-4">
+            {errors.birthday && (
+              <span className="text-xs text-red-500">{errors.birthday}</span>
+            )}
+          </div>
+        </div>
 
         <Button
-          className="w-full p-3 text-white bg-blue-600 rounded hover:bg-blue-700"
+          className="w-full p-3 mt-4 text-white bg-blue-600 rounded hover:bg-blue-700"
           onClick={handleRegister}
         >
           Register

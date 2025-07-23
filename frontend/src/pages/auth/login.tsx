@@ -71,7 +71,7 @@ const login: React.FC = () => {
   };
 
   const handleRegisterClick = () => {
-    navigate("/register"); // Điều hướng đến trang Register
+    navigate("/auth/register"); // Điều hướng đến trang Register
   };
   const handleForgotPasswordClick = () => {
     navigate("/login/forgot-password"); // Điều hướng đến trang Forgot Password
@@ -87,6 +87,7 @@ const login: React.FC = () => {
         <h1 className="mb-10 text-3xl font-bold text-blue-600">IT Forum</h1>
 
         <div className="mb-6">
+          <label className="block mb-1 text-sm">Email or phone</label>
           <input
             type="text"
             placeholder="Email hoặc số điện thoại"
@@ -96,6 +97,7 @@ const login: React.FC = () => {
           />
         </div>
         <div className="mb-2">
+          <label className="block mb-1 text-sm">Password</label>
           <input
             type="password"
             placeholder="Password"

@@ -24,7 +24,7 @@ const resetPassword: React.FC = () => {
     // Giả lập gọi API để cập nhật mật khẩu
     console.log("Cập nhật mật khẩu cho:", JSON.parse(localStorage.getItem("forgotPasswordData") || '{}').emailOrPhone, "với mật khẩu mới:", newPassword);
     localStorage.removeItem("forgotPasswordData");
-    navigate("/login");
+    navigate("/auth/login");
   };
 
   return (
