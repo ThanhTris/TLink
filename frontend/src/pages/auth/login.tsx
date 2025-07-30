@@ -4,6 +4,8 @@ import forum from "../../assets/forum.png";
 import facebook from "../../assets/facebook-logo.png";
 import google from "../../assets/google-logo.png";
 import { useNavigate } from "react-router-dom";
+import { GoogleLogin } from '@react-oauth/google';
+import { jwtDecode } from "jwt-decode"; // Sử dụng đúng tên import của thư viện
 
 const login: React.FC = () => {
   const [emailOrPhone, setEmailOrPhone] = useState("");
@@ -75,6 +77,30 @@ const login: React.FC = () => {
   };
   const handleForgotPasswordClick = () => {
     navigate("/login/forgot-password"); // Điều hướng đến trang Forgot Password
+  };
+
+  const handleGoogleLoginSuccess = (credentialResponse: any) => {
+    if (credentialResponse.credential) {
+      const decoded: any = jwtDecode(credentialResponse.credential);
+      const email = decoded.email;
+      fetch("http://localhost:8080/api/auth/login/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            navigate("/");
+          } else {
+            setError(data.message);
+          }
+        });
+    }
+  };
+
+  const handleGoogleLoginFailure = () => {
+    setError("Đăng nhập Google thất bại.");
   };
 
   return (
@@ -150,10 +176,10 @@ const login: React.FC = () => {
         </div>
 
         <Button className="flex items-center justify-center w-full gap-2 p-3 mb-6 border rounded">
-          <img src={google} alt="Google" className="w-5 h-5" />
-          <span className="inline-block w-40 text-center">
-            Login with Google
-          </span>
+          <GoogleLogin
+            onSuccess={handleGoogleLoginSuccess}
+            onError={handleGoogleLoginFailure}
+          />
         </Button>
         <Button className="flex items-center justify-center w-full gap-2 p-3 border rounded">
           <img src={facebook} alt="Facebook" className="w-5 h-5" />
@@ -167,3 +193,5 @@ const login: React.FC = () => {
 };
 
 export default login;
+
+
