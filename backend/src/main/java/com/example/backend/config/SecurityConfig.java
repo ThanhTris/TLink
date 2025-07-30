@@ -29,7 +29,13 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
                 // Cho phép truy cập không xác thực đến các endpoint đăng ký và xác thực OTP
-                .requestMatchers("/api/users/register", "/api/users/register/verify-otp").permitAll()
+                .requestMatchers(
+                    "/api/auth/login",
+                    "/api/auth/login/forgot-password",
+                    "/api/auth/login/reset-password",
+                    "/api/auth/register",
+                    "/api/auth/register/verify-otp"
+                ).permitAll()
                 // Tất cả các yêu cầu khác yêu cầu xác thực
                 .anyRequest().authenticated()
             )

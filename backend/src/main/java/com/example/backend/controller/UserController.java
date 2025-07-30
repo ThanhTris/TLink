@@ -1,12 +1,8 @@
 package com.example.backend.controller;
 
-import com.example.backend.dto.RegisterRequestDTO;
-import com.example.backend.dto.RegisterResponseDTO;
-import com.example.backend.dto.UserDTO;
-import com.example.backend.dto.VerifyOtpRequestDTO;
+import com.example.backend.dto.common.UserDTO;
 import com.example.backend.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -38,15 +34,5 @@ public class UserController {
         // Logic to delete a user
     }
     
-    @PostMapping("/register")
-    public ResponseEntity<RegisterResponseDTO> register(@RequestBody RegisterRequestDTO registerRequest) {
-        RegisterResponseDTO response = userService.register(registerRequest);
-        return ResponseEntity.ok(response);
-    }
-    
-    @PostMapping("/register/verify-otp")
-    public ResponseEntity<RegisterResponseDTO> verifyOTP(@RequestBody VerifyOtpRequestDTO verifyRequest) {
-        RegisterResponseDTO response = userService.verifyOTP(verifyRequest.getEmail(), verifyRequest.getOtp());
-        return ResponseEntity.ok(response);
-    }
+
 }
