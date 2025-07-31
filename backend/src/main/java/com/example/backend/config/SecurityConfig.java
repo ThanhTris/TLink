@@ -34,7 +34,14 @@ public class SecurityConfig {
                     "/api/auth/login/forgot-password",
                     "/api/auth/login/reset-password",
                     "/api/auth/register",
-                    "/api/auth/register/verify-otp"
+                    "/api/auth/register/verify-otp",
+                    "/api/posts",
+                    "/api/posts/**",
+                    "/api/posts/search",
+                    "/api/posts/search/*",
+                    "/api/posts/category"
+                  
+
                 ).permitAll()
                 // Tất cả các yêu cầu khác yêu cầu xác thực
                 .anyRequest().authenticated()
