@@ -40,9 +40,10 @@ public class PostController {
     public ResponseEntity<ApiResponseDTO> getPostsByCategory(
             @RequestParam String categoryPath,
             @RequestParam(defaultValue = "10") int limit,
-            @RequestParam(defaultValue = "0") int offset
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(required = false) Long userId 
     ) {
-        ApiResponseDTO response = postService.getPostsByCategory(categoryPath, limit, offset);
+        ApiResponseDTO response = postService.getPostsByCategory(categoryPath, limit, offset, userId);
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status).body(response);
     }

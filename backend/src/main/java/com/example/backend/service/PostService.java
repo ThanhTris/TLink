@@ -1,10 +1,13 @@
 package com.example.backend.service;
 
 import com.example.backend.dto.request.PostCreateRequestDTO;
+import com.example.backend.entity.User;
 import com.example.backend.dto.common.ApiResponseDTO;
+import com.example.backend.repository.PostRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.StoredProcedureQuery;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,6 +18,9 @@ public class PostService {
 
     @PersistenceContext
     private EntityManager entityManager;
+
+    @Autowired
+    private PostRepository postRepository;
 
     @Transactional
     public ApiResponseDTO createPost(PostCreateRequestDTO request) {
@@ -58,7 +64,10 @@ public class PostService {
     @Transactional
     public ApiResponseDTO updatePost(Long postId, PostCreateRequestDTO request) {
         try {
-            // Giả sử có stored procedure sp_update_post (nếu chưa có, dùng JPA update)
+            // Kiểm tra postId có tồn tại không
+            if (!postRepository.existsById(postId)) {
+                return new ApiResponseDTO(false, "Bài viết không tồn tại", null, "POST_NOT_FOUND");
+            }
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_update_post");
             query.registerStoredProcedureParameter("p_post_id", Long.class, jakarta.persistence.ParameterMode.IN);
             query.registerStoredProcedureParameter("p_title", String.class, jakarta.persistence.ParameterMode.IN);
@@ -95,7 +104,10 @@ public class PostService {
     @Transactional
     public ApiResponseDTO deletePost(Long postId) {
         try {
-            // Giả sử có stored procedure sp_delete_post (nếu chưa có, dùng JPA delete)
+            // Kiểm tra postId có tồn tại không
+            if (!postRepository.existsById(postId)) {
+                return new ApiResponseDTO(false, "Bài viết không tồn tại", null, "POST_NOT_FOUND");
+            }
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_delete_post");
             query.registerStoredProcedureParameter("p_post_id", Long.class, jakarta.persistence.ParameterMode.IN);
             query.setParameter("p_post_id", postId);
@@ -108,46 +120,92 @@ public class PostService {
     }
 
     @Transactional(readOnly = true)
-    public ApiResponseDTO getPostsByCategory(String categoryPath, int limit, int offset) {
+    public ApiResponseDTO getPostsByCategory(String categoryPath, int limit, int offset, Long userId) {
         try {
-            List<String> childTagNames = getChildTagsForParentCategory(categoryPath);
-            String sql;
             List<Object[]> results;
+            String sql;
 
-            if (!childTagNames.isEmpty()) {
-                // Nếu là category cha, lấy tất cả bài viết thuộc các tag con
-                sql = "SELECT DISTINCT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                        "u.name AS user_name, u.avatar AS user_avatar " +
-                        "FROM posts p " +
-                        "JOIN users u ON p.user_id = u.id " +
-                        "LEFT JOIN post_child_tags pct ON p.id = pct.post_id " +
-                        "LEFT JOIN child_tags ct ON pct.child_tag_id = ct.id " +
-                        "WHERE ct.name IN (:tagNames) " +
-                        "ORDER BY p.created_at DESC " +
-                        "LIMIT :limit OFFSET :offset";
-                results = entityManager.createNativeQuery(sql)
-                        .setParameter("tagNames", childTagNames)
-                        .setParameter("limit", limit)
-                        .setParameter("offset", offset)
-                        .getResultList();
-            } else {
-                // Nếu là category con, lấy theo tag đơn
-                String tagName = mapCategoryPathToTagName(categoryPath);
+            if ("/popular".equals(categoryPath)) {
+                // Lấy bài viết theo lượt thích và comment giảm dần
                 sql = "SELECT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
                         "u.name AS user_name, u.avatar AS user_avatar " +
                         "FROM posts p " +
                         "JOIN users u ON p.user_id = u.id " +
-                        "LEFT JOIN post_child_tags pct ON p.id = pct.post_id " +
-                        "LEFT JOIN child_tags ct ON pct.child_tag_id = ct.id " +
-                        "LEFT JOIN parent_tags pt ON ct.parent_tag_id = pt.id " +
-                        "WHERE ct.name = :tagName OR pt.name = :tagName " +
-                        "ORDER BY p.created_at DESC " +
+                        "ORDER BY p.likes_count DESC, p.comment_count DESC, p.created_at DESC " +
                         "LIMIT :limit OFFSET :offset";
                 results = entityManager.createNativeQuery(sql)
-                        .setParameter("tagName", tagName)
                         .setParameter("limit", limit)
                         .setParameter("offset", offset)
                         .getResultList();
+            } else if ("/saved".equals(categoryPath)) {
+                // Lấy các bài viết đã lưu của user
+                if (userId == null) {
+                    return new ApiResponseDTO(false, "Thiếu userId để lấy bài viết đã lưu", null, "USER_ID_REQUIRED");
+                }
+                User user = entityManager.find(User.class, userId);
+                if (user == null) {
+                    return new ApiResponseDTO(false, "User không tồn tại", null, "USER_NOT_FOUND");
+                }
+                sql = "SELECT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
+                        "u.name AS user_name, u.avatar AS user_avatar " +
+                        "FROM posts p " +
+                        "JOIN users u ON p.user_id = u.id " +
+                        "JOIN post_saves ps ON p.id = ps.post_id " +
+                        "WHERE ps.user_id = :userId " +
+                        "ORDER BY ps.created_at DESC " +
+                        "LIMIT :limit OFFSET :offset";
+                results = entityManager.createNativeQuery(sql)
+                        .setParameter("userId", userId)
+                        .setParameter("limit", limit)
+                        .setParameter("offset", offset)
+                        .getResultList();
+            } else if ("/".equals(categoryPath) || "/home".equals(categoryPath)) {
+                // Lấy các bài viết mới nhất
+                sql = "SELECT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
+                        "u.name AS user_name, u.avatar AS user_avatar " +
+                        "FROM posts p " +
+                        "JOIN users u ON p.user_id = u.id " +
+                        "ORDER BY p.created_at DESC " +
+                        "LIMIT :limit OFFSET :offset";
+                results = entityManager.createNativeQuery(sql)
+                        .setParameter("limit", limit)
+                        .setParameter("offset", offset)
+                        .getResultList();
+            } else {
+                List<String> childTagNames = getChildTagsForParentCategory(categoryPath);
+                if (!childTagNames.isEmpty()) {
+                    sql = "SELECT DISTINCT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
+                            "u.name AS user_name, u.avatar AS user_avatar " +
+                            "FROM posts p " +
+                            "JOIN users u ON p.user_id = u.id " +
+                            "LEFT JOIN post_child_tags pct ON p.id = pct.post_id " +
+                            "LEFT JOIN child_tags ct ON pct.child_tag_id = ct.id " +
+                            "WHERE ct.name IN (:tagNames) " +
+                            "ORDER BY p.created_at DESC " +
+                            "LIMIT :limit OFFSET :offset";
+                    results = entityManager.createNativeQuery(sql)
+                            .setParameter("tagNames", childTagNames)
+                            .setParameter("limit", limit)
+                            .setParameter("offset", offset)
+                            .getResultList();
+                } else {
+                    String tagName = mapCategoryPathToTagName(categoryPath);
+                    sql = "SELECT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
+                            "u.name AS user_name, u.avatar AS user_avatar " +
+                            "FROM posts p " +
+                            "JOIN users u ON p.user_id = u.id " +
+                            "LEFT JOIN post_child_tags pct ON p.id = pct.post_id " +
+                            "LEFT JOIN child_tags ct ON pct.child_tag_id = ct.id " +
+                            "LEFT JOIN parent_tags pt ON ct.parent_tag_id = pt.id " +
+                            "WHERE ct.name = :tagName OR pt.name = :tagName " +
+                            "ORDER BY p.created_at DESC " +
+                            "LIMIT :limit OFFSET :offset";
+                    results = entityManager.createNativeQuery(sql)
+                            .setParameter("tagName", tagName)
+                            .setParameter("limit", limit)
+                            .setParameter("offset", offset)
+                            .getResultList();
+                }
             }
 
             return new ApiResponseDTO(true, "Lấy bài viết theo category thành công", results, null);
