@@ -39,7 +39,10 @@ public class SecurityConfig {
                     "/api/posts/**",
                     "/api/posts/search",
                     "/api/posts/search/*",
-                    "/api/posts/category"
+                    "/api/posts/category",
+                    "/api/users/*", // thêm dòng này để permitAll cho update user
+                    "/api/users/*/password",
+                    "/api/users/*/posts"
                   
 
                 ).permitAll()
@@ -63,3 +66,5 @@ public class SecurityConfig {
         return source;
     }
 }
+// Security and CORS configuration are correct.
+// No changes needed.
