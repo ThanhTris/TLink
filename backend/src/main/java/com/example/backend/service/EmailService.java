@@ -10,13 +10,26 @@ public class EmailService {
     
     @Autowired
     private JavaMailSender mailSender;
-    
-    public void sendOtpEmail(String toEmail, String otp) {
+
+    public void sendOtpEmailForRegister(String toEmail, String otp) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(toEmail);
         message.setSubject("IT Forum - Mã xác thực đăng ký");
         message.setText("Kính gửi thành viên,\n\n" +
                 "Cảm ơn bạn đã đăng ký tài khoản tại IT Forum. " +
+                "Mã xác thực OTP của bạn là: " + otp + "\n\n" +
+                "Mã này có hiệu lực trong vòng 5 phút.\n\n" +
+                "Vui lòng không chia sẻ mã này cho bất kỳ ai.\n\n" +
+                "Trân trọng,\nIT Forum Team");
+        
+        mailSender.send(message);
+    }
+    public void sendOtpEmailForForgotPassword(String toEmail, String otp) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(toEmail);
+        message.setSubject("IT Forum - Mã xác thực quên mật khẩu");
+        message.setText("Kính gửi thành viên,\n\n" +
+                "Bạn đã yêu cầu đặt lại mật khẩu cho tài khoản IT Forum của mình. " +
                 "Mã xác thực OTP của bạn là: " + otp + "\n\n" +
                 "Mã này có hiệu lực trong vòng 5 phút.\n\n" +
                 "Vui lòng không chia sẻ mã này cho bất kỳ ai.\n\n" +

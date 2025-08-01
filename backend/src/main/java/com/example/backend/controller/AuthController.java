@@ -28,7 +28,7 @@ public class AuthController {
 
     @PostMapping("/register/verify-otp")
     public ResponseEntity<ApiResponseDTO> verifyOtp(@RequestBody VerifyOtpRequestDTO request) {
-        ApiResponseDTO response = authService.verifyOtp(request.getEmail(), request.getOtp());
+        ApiResponseDTO response = authService.verifyOtp(request.getEmailOrPhone(), request.getOtp());
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status).body(response);
     }
@@ -41,10 +41,18 @@ public class AuthController {
         return ResponseEntity.status(status).body(response);
     }
 
-    // Quên mật khẩu
+    // Quên mật khẩu: gửi OTP về email hoặc số điện thoại
     @PostMapping("/login/forgot-password")
     public ResponseEntity<ApiResponseDTO> forgotPassword(@RequestBody ForgotPasswordRequestDTO request) {
         ApiResponseDTO response = authService.forgotPassword(request);
+        HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(response);
+    }
+    
+    // Xác thực OTP cho quên mật khẩu
+    @PostMapping("/login/verify-otp")
+    public ResponseEntity<ApiResponseDTO> verifyForgotPasswordOtp(@RequestBody VerifyOtpRequestDTO request) {
+        ApiResponseDTO response = authService.verifyForgotPasswordOtp(request.getEmailOrPhone(), request.getOtp());
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status).body(response);
     }
@@ -74,6 +82,7 @@ public class AuthController {
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.UNAUTHORIZED;
         return ResponseEntity.status(status).body(response);
     }
+
 
 }
 

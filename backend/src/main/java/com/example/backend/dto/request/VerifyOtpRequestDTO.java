@@ -1,15 +1,15 @@
 package com.example.backend.dto.request;
 
 public class VerifyOtpRequestDTO {
-    private String email;
+    private String emailOrPhone;
     private String otp;
 
-    public String getEmail() {
-        return email;
+    public String getEmailOrPhone() {
+        return emailOrPhone;
     }
 
-    public void setEmail(String email) {
-        this.email = email;
+    public void setEmailOrPhone(String emailOrPhone) {
+        this.emailOrPhone = emailOrPhone;
     }
 
     public String getOtp() {
