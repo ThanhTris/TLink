@@ -10,6 +10,7 @@ import jakarta.persistence.StoredProcedureQuery;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.UnexpectedRollbackException;
 
 import java.util.List;
 
@@ -214,6 +215,84 @@ public class PostService {
         }
     }
 
+    @Transactional
+    public ApiResponseDTO likePost(Long postId, Long userId) {
+        try {
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_like_post");
+            query.registerStoredProcedureParameter("p_post_id", Long.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_user_id", Long.class, jakarta.persistence.ParameterMode.IN);
+            query.setParameter("p_post_id", postId);
+            query.setParameter("p_user_id", userId);
+            query.execute();
+            return new ApiResponseDTO(true, "Like bài viết thành công", null, null);
+        } catch (UnexpectedRollbackException urex) {
+            // Extract root cause message from the exception chain
+            String message = extractRootCauseMessage(urex);
+            return new ApiResponseDTO(false, message, null, "LIKE_POST_ERROR");
+        } catch (Exception ex) {
+            String message = ex.getMessage();
+            // Nếu message chứa lỗi nghiệp vụ từ SIGNAL SQLSTATE thì lấy message đó
+            if (message != null && message.contains("SQLSTATE[45000]")) {
+                int idx = message.indexOf("MESSAGE_TEXT = '");
+                if (idx != -1) {
+                    int start = idx + "MESSAGE_TEXT = '".length();
+                    int end = message.indexOf("'", start);
+                    if (end > start) {
+                        message = message.substring(start, end);
+                    }
+                }
+            }
+            return new ApiResponseDTO(false, message, null, "LIKE_POST_ERROR");
+        }
+    }
+
+    @Transactional
+    public ApiResponseDTO unlikePost(Long postId, Long userId) {
+        try {
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_unlike_post");
+            query.registerStoredProcedureParameter("p_post_id", Long.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_user_id", Long.class, jakarta.persistence.ParameterMode.IN);
+            query.setParameter("p_post_id", postId);
+            query.setParameter("p_user_id", userId);
+            query.execute();
+            return new ApiResponseDTO(true, "Unlike bài viết thành công", null, null);
+        } catch (UnexpectedRollbackException urex) {
+            String message = extractRootCauseMessage(urex);
+            return new ApiResponseDTO(false, message, null, "UNLIKE_POST_ERROR");
+        } catch (Exception ex) {
+            String message = ex.getMessage();
+            return new ApiResponseDTO(false, message, null, "UNLIKE_POST_ERROR");
+        }
+    }
+
+    @Transactional
+    public ApiResponseDTO searchPosts(String keyword, Integer limit, Integer offset) {
+        try {
+            // Tìm kiếm theo title, content, child tag, parent tag (chỉ cần 1 trường khớp là trả về)
+            String sql = "SELECT DISTINCT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
+                    "u.name AS user_name, u.avatar AS user_avatar " +
+                    "FROM posts p " +
+                    "JOIN users u ON p.user_id = u.id " +
+                    "LEFT JOIN post_child_tags pct ON p.id = pct.post_id " +
+                    "LEFT JOIN child_tags ct ON pct.child_tag_id = ct.id " +
+                    "LEFT JOIN parent_tags pt ON ct.parent_tag_id = pt.id " +
+                    "WHERE p.title LIKE CONCAT('%', :keyword, '%') " +
+                    "OR p.content LIKE CONCAT('%', :keyword, '%') " +
+                    "OR ct.name LIKE CONCAT('%', :keyword, '%') " +
+                    "OR pt.name LIKE CONCAT('%', :keyword, '%') " +
+                    "ORDER BY p.created_at DESC " +
+                    "LIMIT :limit OFFSET :offset";
+            List<Object[]> results = entityManager.createNativeQuery(sql)
+                    .setParameter("keyword", keyword)
+                    .setParameter("limit", limit)
+                    .setParameter("offset", offset)
+                    .getResultList();
+            return new ApiResponseDTO(true, "Tìm kiếm bài viết thành công", results, null);
+        } catch (Exception ex) {
+            return new ApiResponseDTO(false, "Lỗi khi tìm kiếm bài viết: " + ex.getMessage(), null, "SEARCH_POST_ERROR");
+        }
+    }
+
     // Trả về danh sách tên các tag con cho category cha (dùng path FE)
     private List<String> getChildTagsForParentCategory(String categoryPath) {
         switch (categoryPath) {
@@ -269,5 +348,26 @@ public class PostService {
             default: return categoryPath;
         }
     }
-}
 
+    // Helper to extract root cause message from exception chain
+    private String extractRootCauseMessage(Throwable ex) {
+        Throwable cause = ex;
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        String msg = cause.getMessage();
+        // Try to extract MESSAGE_TEXT from SQLSTATE[45000] error
+        if (msg != null && msg.contains("MESSAGE_TEXT = '")) {
+            int idx = msg.indexOf("MESSAGE_TEXT = '");
+            if (idx != -1) {
+                int start = idx + "MESSAGE_TEXT = '".length();
+                int end = msg.indexOf("'", start);
+                if (end > start) {
+                    return msg.substring(start, end);
+                }
+            }
+        }
+        return msg;
+    }
+}
+    

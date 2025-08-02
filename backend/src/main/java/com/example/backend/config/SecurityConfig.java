@@ -21,44 +21,41 @@ public class SecurityConfig {
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
-    
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())  // Tắt CSRF cho API
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .authorizeHttpRequests(auth -> auth
-                // Cho phép truy cập không xác thực đến các endpoint đăng ký và xác thực OTP
-                .requestMatchers(
-                    "/api/auth/login",
-                    "/api/auth/login/forgot-password",
-                    "/api/auth/login/verify-otp",
-                    "/api/auth/login/reset-password",
-                    "/api/auth/register",
-                    "/api/auth/register/verify-otp",
-                    "/api/posts",
-                    "/api/posts/**",
-                    "/api/posts/search",
-                    "/api/posts/search/*",
-                    "/api/posts/category",
-                    "/api/users/*", // thêm dòng này để permitAll cho update user
-                    "/api/users/*/password",
-                    "/api/users/*/posts"
-                  
-
-                ).permitAll()
-                // Tất cả các yêu cầu khác yêu cầu xác thực
-                .anyRequest().authenticated()
-            )
-            .httpBasic(httpBasic -> {});  // Sử dụng xác thực HTTP Basic
+                .csrf(csrf -> csrf.disable()) // Tắt CSRF cho API
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .authorizeHttpRequests(auth -> auth
+                        // Cho phép truy cập không xác thực đến các endpoint đăng ký và xác thực OTP
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/auth/login/forgot-password",
+                                "/api/auth/login/verify-otp",
+                                "/api/auth/login/reset-password",
+                                "/api/auth/register",
+                                "/api/auth/register/verify-otp",
+                                "/api/posts",
+                                "/api/posts/category",
+                                "/api/posts/search", 
+                                "/api/posts/**",
+                                "/api/users/*",
+                                "/api/users/*/password",
+                                "/api/users/*/posts"
+                        ).permitAll()
+                        // Tất cả các yêu cầu khác yêu cầu xác thực
+                        .anyRequest().authenticated())
+                .httpBasic(httpBasic -> {
+                }); // Sử dụng xác thực HTTP Basic
 
         return http.build();
     }
-    
+
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("*"));  // Trong môi trường phát triển
+        configuration.setAllowedOrigins(Arrays.asList("*")); // Trong môi trường phát triển
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(false);
@@ -67,5 +64,4 @@ public class SecurityConfig {
         return source;
     }
 }
-// Security and CORS configuration are correct.
-// No changes needed.
+

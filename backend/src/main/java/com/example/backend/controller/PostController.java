@@ -47,4 +47,46 @@ public class PostController {
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status).body(response);
     }
+
+    @PostMapping("/{id}/like")
+    public ResponseEntity<ApiResponseDTO> likePost(
+            @PathVariable Long id,
+            @RequestParam Long userId
+    ) {
+        try {
+            ApiResponseDTO response = postService.likePost(id, userId);
+            HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status).body(response);
+        } catch (Exception ex) {
+            // Luôn trả về JSON lỗi, không trả về lỗi 500 HTML
+            ApiResponseDTO response = new ApiResponseDTO(false, "Lỗi hệ thống: " + ex.getMessage(), null, "INTERNAL_ERROR");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+    }
+
+    @PostMapping("/{id}/unlike")
+    public ResponseEntity<ApiResponseDTO> unlikePost(
+            @PathVariable Long id,
+            @RequestParam Long userId
+    ) {
+        try {
+            ApiResponseDTO response = postService.unlikePost(id, userId);
+            HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status).body(response);
+        } catch (Exception ex) {
+            ApiResponseDTO response = new ApiResponseDTO(false, "Lỗi hệ thống: " + ex.getMessage(), null, "INTERNAL_ERROR");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+        }
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponseDTO> searchPosts(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "10") Integer limit,
+            @RequestParam(defaultValue = "0") Integer offset
+    ) {
+        ApiResponseDTO response = postService.searchPosts(keyword, limit, offset);
+        HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(response);
+    }
 }
