@@ -89,4 +89,11 @@ public class PostController {
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status).body(response);
     }
+
+    @GetMapping("/{id}/comment-count")
+    public ResponseEntity<ApiResponseDTO> getCommentCount(@PathVariable Long id) {
+        ApiResponseDTO response = postService.getCommentCountForPost(id);
+        HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(response);
+    }
 }

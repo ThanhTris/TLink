@@ -369,5 +369,18 @@ public class PostService {
         }
         return msg;
     }
+
+    @Transactional(readOnly = true)
+    public ApiResponseDTO getCommentCountForPost(Long postId) {
+        try {
+            String sql = "SELECT comment_count FROM posts WHERE id = :postId";
+            Object result = entityManager.createNativeQuery(sql)
+                    .setParameter("postId", postId)
+                    .getSingleResult();
+            Long count = (result instanceof Number) ? ((Number) result).longValue() : 0L;
+            return new ApiResponseDTO(true, "Lấy số lượng bình luận thành công", count, null);
+        } catch (Exception ex) {
+            return new ApiResponseDTO(false, "Lỗi khi lấy số lượng bình luận: " + ex.getMessage(), null, "GET_COMMENT_COUNT_ERROR");
+        }
+    }
 }
-    

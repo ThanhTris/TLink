@@ -42,7 +42,11 @@ public class SecurityConfig {
                                 "/api/posts/**",
                                 "/api/users/*",
                                 "/api/users/*/password",
-                                "/api/users/*/posts"
+                                "/api/users/*/posts",
+                                "/api/comments",
+                                "/api/comments/tree",
+                                "/api/comments/*/like",
+                                "/api/comments/*/unlike"
                         ).permitAll()
                         // Tất cả các yêu cầu khác yêu cầu xác thực
                         .anyRequest().authenticated())
