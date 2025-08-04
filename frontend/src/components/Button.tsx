@@ -8,10 +8,10 @@ interface ButtonProps {
 
 const Button: React.FC<ButtonProps> = ({ onClick, className, children }) => {
   return (
-    <button onClick={onClick} className={className}>
+    <button onClick={onClick} className={`hover:cursor-pointer ${className}`}>
       {children}
     </button>
   );
 };
 
-export default Button;
+  export default Button;
