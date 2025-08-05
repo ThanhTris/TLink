@@ -4,10 +4,20 @@ import forum from "../../../assets/forum.png";
 import facebook from "../../../assets/facebook-logo.png";
 import google from "../../../assets/google-logo.png";
 import { useNavigate } from "react-router-dom";
-import { GoogleLogin } from "@react-oauth/google";
+import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
 import Toast from "../../../components/Toast";
 import { login as loginApi } from "../../../api/auth";
+
+// Extend the Window interface to include FB
+declare global {
+  interface Window {
+    FB: any;
+  }
+}
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const FACEBOOK_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID; 
 
 const login: React.FC = () => {
   const [emailOrPhone, setEmailOrPhone] = useState("");
@@ -30,6 +40,34 @@ const login: React.FC = () => {
       setEmailOrPhone(savedEmailOrPhone);
       setPassword(savedPassword);
       setRememberMe(true);
+    }
+  }, []);
+
+  // Load Facebook SDK
+  useEffect(() => {
+    // Chỉ load 1 lần
+    if (window.FB) return;
+    ((d, s, id) => {
+      if (d.getElementById(id)) return;
+      const js = d.createElement(s) as HTMLScriptElement;
+      js.id = id;
+      js.src = "https://connect.facebook.net/en_US/sdk.js";
+      js.onload = () => {
+        window.FB.init({
+          appId: FACEBOOK_APP_ID,
+          cookie: true,
+          xfbml: false,
+          version: "v18.0",
+        });
+      };
+      d.body.appendChild(js);
+    })(document, "script", "facebook-jssdk");
+  }, []);
+
+  // Cảnh báo nếu không phải HTTPS
+  useEffect(() => {
+    if (window.location.protocol !== "https:") {
+      setError("Bạn phải chạy trang web bằng HTTPS để sử dụng đăng nhập Facebook.");
     }
   }, []);
 
@@ -96,29 +134,82 @@ const login: React.FC = () => {
     navigate("/auth/login/forgot-password"); // Điều hướng đến trang Forgot Password
   };
 
-  // const handleGoogleLoginSuccess = (credentialResponse: any) => {
-  //   if (credentialResponse.credential) {
-  //     const decoded: any = jwtDecode(credentialResponse.credential);
-  //     const email = decoded.email;
-  //     fetch("http://localhost:8080/api/auth/login/google", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({ email }),
-  //     })
-  //       .then(res => res.json())
-  //       .then(data => {
-  //         if (data.success) {
-  //           navigate("/");
-  //         } else {
-  //           setError(data.message);
-  //         }
-  //       });
-  //   }
-  // };
+  const handleGoogleLoginSuccess = (credentialResponse: any) => {
+    if (credentialResponse.credential) {
+      const decoded: any = jwtDecode(credentialResponse.credential);
+      const email = decoded.email;
+      const name = decoded.name || decoded.given_name || decoded.family_name || "Google User";
+      const avatar = decoded.picture || "";
+      fetch("/api/auth/login/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name, avatar }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            localStorage.setItem("user", JSON.stringify(data.data)); // Lưu user vào localStorage
+            navigate("/");
+          } else {
+            setError(data.message);
+          }
+        })
+        .catch(() => {
+          setError("Không thể kết nối tới máy chủ. Vui lòng thử lại sau.");
+        });
+    }
+  };
 
-  // const handleGoogleLoginFailure = () => {
-  //   setError("Đăng nhập Google thất bại.");
-  // };
+  const handleGoogleLoginFailure = () => {
+    setError("Đăng nhập Google thất bại.");
+  };
+
+  // Facebook login handler
+  const handleFacebookLogin = () => {
+    if (window.location.protocol !== "https:") {
+      setError("Bạn phải chạy trang web bằng HTTPS để sử dụng đăng nhập Facebook.");
+      return;
+    }
+    if (!window.FB) {
+      setError("Không thể kết nối Facebook SDK.");
+      return;
+    }
+    window.FB.login(
+      (response: any) => {
+        if (response.authResponse) {
+          window.FB.api(
+            "/me",
+            { fields: "id,name,email,picture" },
+            (userInfo: any) => {
+              const email = userInfo.email;
+              const name = userInfo.name;
+              const avatar = userInfo.picture?.data?.url || "";
+              fetch("/api/auth/login/facebook", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, name, avatar }),
+              })
+                .then((res) => res.json())
+                .then((data) => {
+                  if (data.success) {
+                    localStorage.setItem("user", JSON.stringify(data.data));
+                    navigate("/");
+                  } else {
+                    setError(data.message);
+                  }
+                })
+                .catch(() => {
+                  setError("Không thể kết nối tới máy chủ. Vui lòng thử lại sau.");
+                });
+            }
+          );
+        } else {
+          setError("Đăng nhập Facebook thất bại.");
+        }
+      },
+      { scope: "email,public_profile" }
+    );
+  };
 
   return (
     <div className="flex flex-row w-full h-screen">
@@ -202,18 +293,25 @@ const login: React.FC = () => {
           <hr className="flex-1 border-t border-gray-400" />
         </div>
 
-        {/* <Button className="flex items-center justify-center w-full gap-2 p-3 mb-6 border rounded">
-          <GoogleLogin
-            onSuccess={handleGoogleLoginSuccess}
-            onError={handleGoogleLoginFailure}
-          />
-        </Button>
-        <Button className="flex items-center justify-center w-full gap-2 p-3 border rounded">
+        {/* GoogleOAuthProvider should be at a higher level (App.tsx/main.tsx), not here.
+            But for page-level demo, you can wrap just this button: */}
+        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+          <div className="mb-6">
+            <GoogleLogin
+              onSuccess={handleGoogleLoginSuccess}
+              onError={handleGoogleLoginFailure}
+            />
+          </div>
+        </GoogleOAuthProvider>
+        <Button
+          className="flex items-center justify-center w-full gap-2 p-3 border rounded"
+          onClick={handleFacebookLogin}
+        >
           <img src={facebook} alt="Facebook" className="w-5 h-5" />
           <span className="inline-block w-40 text-center">
             Login with Facebook
           </span>
-        </Button> */}
+        </Button>
       </div>
       {toast && (
         <Toast

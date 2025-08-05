@@ -69,7 +69,9 @@ public class AuthController {
     @PostMapping("/login/google")
     public ResponseEntity<ApiResponseDTO> loginWithGoogle(@RequestBody Map<String, String> body) {
         String email = body.get("email");
-        ApiResponseDTO response = authService.loginWithGoogleEmail(email);
+        String name = body.get("name");
+        String avatar = body.get("avatar");
+        ApiResponseDTO response = authService.loginWithGoogleEmail(email, name, avatar);
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.UNAUTHORIZED;
         return ResponseEntity.status(status).body(response);
     }
@@ -78,7 +80,9 @@ public class AuthController {
     @PostMapping("/login/facebook")
     public ResponseEntity<ApiResponseDTO> loginWithFacebook(@RequestBody Map<String, String> body) {
         String email = body.get("email");
-        ApiResponseDTO response = authService.loginWithFacebookEmail(email);
+        String name = body.get("name");
+        String avatar = body.get("avatar");
+        ApiResponseDTO response = authService.loginWithFacebookEmail(email, name, avatar);
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.UNAUTHORIZED;
         return ResponseEntity.status(status).body(response);
     }

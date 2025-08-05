@@ -28,9 +28,10 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable()) // Tắt CSRF cho API
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        // Cho phép truy cập không xác thực đến các endpoint đăng ký và xác thực OTP
+                        // Chỉ cho phép các endpoint này truy cập không xác thực
                         .requestMatchers(
                                 "/api/auth/login",
+                                "/api/auth/login/google",
                                 "/api/auth/login/forgot-password",
                                 "/api/auth/login/verify-otp",
                                 "/api/auth/login/reset-password",
@@ -48,7 +49,7 @@ public class SecurityConfig {
                                 "/api/comments/*/like",
                                 "/api/comments/*/unlike"
                         ).permitAll()
-                        // Tất cả các yêu cầu khác yêu cầu xác thực
+                        // Các endpoint khác phải xác thực
                         .anyRequest().authenticated())
                 .httpBasic(httpBasic -> {
                 }); // Sử dụng xác thực HTTP Basic

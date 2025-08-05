@@ -189,10 +189,17 @@ public class AuthService {
     }
 
     // Đăng nhập bằng Google (email đã xác thực ở FE)
-    public ApiResponseDTO loginWithGoogleEmail(String email) {
+    public ApiResponseDTO loginWithGoogleEmail(String email, String name, String avatar) {
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) {
-            return new ApiResponseDTO(false, "Tài khoản Google chưa được liên kết", null, "USER_NOT_FOUND");
+            // Tạo user mới nếu chưa tồn tại
+            User newUser = new User();
+            newUser.setEmail(email);
+            newUser.setName(name != null ? name : "Google User");
+            newUser.setAvatar(avatar);
+            newUser.setPasswordHash(""); // Hoặc random
+            userRepository.save(newUser);
+            user = newUser;
         }
         UserDTO userDTO = new UserDTO();
         userDTO.setId(user.getId());
@@ -206,10 +213,17 @@ public class AuthService {
     }
 
     // Đăng nhập bằng Facebook (email đã xác thực ở FE)
-    public ApiResponseDTO loginWithFacebookEmail(String email) {
+    public ApiResponseDTO loginWithFacebookEmail(String email, String name, String avatar) {
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) {
-            return new ApiResponseDTO(false, "Tài khoản Facebook chưa được liên kết", null, "USER_NOT_FOUND");
+            // Tạo user mới nếu chưa tồn tại
+            User newUser = new User();
+            newUser.setEmail(email);
+            newUser.setName(name != null ? name : "Facebook User");
+            newUser.setAvatar(avatar);
+            newUser.setPasswordHash(""); // Hoặc random
+            userRepository.save(newUser);
+            user = newUser;
         }
         UserDTO userDTO = new UserDTO();
         userDTO.setId(user.getId());
