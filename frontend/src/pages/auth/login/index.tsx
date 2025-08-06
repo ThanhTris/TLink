@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
 import Toast from "../../../components/Toast";
-import { login as loginApi } from "../../../api/auth";
+import { login as loginApi, loginGoogle, loginFacebook } from "../../../api/auth";
 
 // Extend the Window interface to include FB
 declare global {
@@ -125,29 +125,23 @@ const login: React.FC = () => {
     navigate("/auth/login/forgot-password"); // Điều hướng đến trang Forgot Password
   };
 
-  const handleGoogleLoginSuccess = (credentialResponse: any) => {
+  const handleGoogleLoginSuccess = async (credentialResponse: any) => {
     if (credentialResponse.credential) {
       const decoded: any = jwtDecode(credentialResponse.credential);
       const email = decoded.email;
       const name = decoded.name || decoded.given_name || decoded.family_name || "Google User";
       const avatar = decoded.picture || "";
-      fetch("/api/auth/login/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name, avatar }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.success) {
-            localStorage.setItem("user", JSON.stringify(data.data)); // Lưu user vào localStorage
-            navigate("/");
-          } else {
-            setError(data.message);
-          }
-        })
-        .catch(() => {
-          setError("Không thể kết nối tới máy chủ. Vui lòng thử lại sau.");
-        });
+      try {
+        const data = await loginGoogle({ email, name, avatar }) as { success: boolean; message: string; data?: any };
+        if (data.success) {
+          localStorage.setItem("user", JSON.stringify(data.data));
+          navigate("/");
+        } else {
+          setError(data.message);
+        }
+      } catch {
+        setError("Không thể kết nối tới máy chủ. Vui lòng thử lại sau.");
+      }
     }
   };
 
@@ -161,9 +155,9 @@ const login: React.FC = () => {
       return;
     }
     window.FB.login(
-      (response: any) => {
+      async (response: any) => {
         if (response.authResponse) {
-          window.FB.api("/me", { fields: "name,email,picture" }, (userInfo: any) => {
+          window.FB.api("/me", { fields: "name,email,picture" }, async (userInfo: any) => {
             const email = userInfo.email;
             const name = userInfo.name;
             const avatar = userInfo.picture?.data?.url || "";
@@ -171,23 +165,17 @@ const login: React.FC = () => {
               setError("Không lấy được email từ Facebook. Vui lòng kiểm tra quyền truy cập.");
               return;
             }
-            fetch("/api/auth/login/facebook", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email, name, avatar }),
-            })
-              .then((res) => res.json())
-              .then((data) => {
-                if (data.success) {
-                  localStorage.setItem("user", JSON.stringify(data.data));
-                  navigate("/");
-                } else {
-                  setError(data.message || "Đăng nhập Facebook thất bại.");
-                }
-              })
-              .catch(() => {
-                setError("Không thể kết nối tới máy chủ. Vui lòng thử lại sau.");
-              });
+            try {
+              const data = await loginFacebook({ email, name, avatar }) as { success: boolean; message: string; data?: any };
+              if (data.success) {
+                localStorage.setItem("user", JSON.stringify(data.data));
+                navigate("/");
+              } else {
+                setError(data.message || "Đăng nhập Facebook thất bại.");
+              }
+            } catch {
+              setError("Không thể kết nối tới máy chủ. Vui lòng thử lại sau.");
+            }
           });
         } else {
           setError("Đăng nhập Facebook thất bại hoặc bị huỷ.");
@@ -311,3 +299,4 @@ const login: React.FC = () => {
 };
 
 export default login;
+

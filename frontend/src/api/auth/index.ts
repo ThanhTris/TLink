@@ -58,4 +58,13 @@ export async function resetPassword(payload: ResetPasswordPayload) {
   return res.data;
 }
 
-// ...có thể bổ sung các hàm loginGoogle, loginFacebook nếu cần...
+export async function loginGoogle(payload: { email: string; name: string; avatar: string }) {
+  const res = await axios.post("/api/auth/login/google", payload);
+  return res.data;
+}
+
+export async function loginFacebook(payload: { email: string; name: string; avatar: string }) {
+  const res = await axios.post("/api/auth/login/facebook", payload);
+  return res.data;
+}
+
