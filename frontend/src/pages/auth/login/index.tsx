@@ -43,32 +43,23 @@ const login: React.FC = () => {
     }
   }, []);
 
-  // Load Facebook SDK
+  // Load SDK Facebook khi mount
   useEffect(() => {
-    // Chỉ load 1 lần
+    // Nếu đã có FB SDK thì không cần load lại
     if (window.FB) return;
-    ((d, s, id) => {
-      if (d.getElementById(id)) return;
-      const js = d.createElement(s) as HTMLScriptElement;
-      js.id = id;
-      js.src = "https://connect.facebook.net/en_US/sdk.js";
-      js.onload = () => {
-        window.FB.init({
-          appId: FACEBOOK_APP_ID,
-          cookie: true,
-          xfbml: false,
-          version: "v18.0",
-        });
-      };
-      d.body.appendChild(js);
-    })(document, "script", "facebook-jssdk");
-  }, []);
-
-  // Cảnh báo nếu không phải HTTPS
-  useEffect(() => {
-    if (window.location.protocol !== "https:") {
-      setError("Bạn phải chạy trang web bằng HTTPS để sử dụng đăng nhập Facebook.");
-    }
+    // Tạo script
+    const script = document.createElement("script");
+    script.src = "https://connect.facebook.net/vi_VN/sdk.js";
+    script.async = true;
+    script.onload = () => {
+      window.FB.init({
+        appId: FACEBOOK_APP_ID,
+        cookie: true,
+        xfbml: false,
+        version: "v18.0",
+      });
+    };
+    document.body.appendChild(script);
   }, []);
 
   // Xác định người dùng nhập là email hay phone
@@ -164,47 +155,42 @@ const login: React.FC = () => {
     setError("Đăng nhập Google thất bại.");
   };
 
-  // Facebook login handler
   const handleFacebookLogin = () => {
-    if (window.location.protocol !== "https:") {
-      setError("Bạn phải chạy trang web bằng HTTPS để sử dụng đăng nhập Facebook.");
-      return;
-    }
     if (!window.FB) {
-      setError("Không thể kết nối Facebook SDK.");
+      setError("Không thể tải Facebook SDK.");
       return;
     }
     window.FB.login(
       (response: any) => {
         if (response.authResponse) {
-          window.FB.api(
-            "/me",
-            { fields: "id,name,email,picture" },
-            (userInfo: any) => {
-              const email = userInfo.email;
-              const name = userInfo.name;
-              const avatar = userInfo.picture?.data?.url || "";
-              fetch("/api/auth/login/facebook", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, name, avatar }),
-              })
-                .then((res) => res.json())
-                .then((data) => {
-                  if (data.success) {
-                    localStorage.setItem("user", JSON.stringify(data.data));
-                    navigate("/");
-                  } else {
-                    setError(data.message);
-                  }
-                })
-                .catch(() => {
-                  setError("Không thể kết nối tới máy chủ. Vui lòng thử lại sau.");
-                });
+          window.FB.api("/me", { fields: "name,email,picture" }, (userInfo: any) => {
+            const email = userInfo.email;
+            const name = userInfo.name;
+            const avatar = userInfo.picture?.data?.url || "";
+            if (!email) {
+              setError("Không lấy được email từ Facebook. Vui lòng kiểm tra quyền truy cập.");
+              return;
             }
-          );
+            fetch("/api/auth/login/facebook", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, name, avatar }),
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.success) {
+                  localStorage.setItem("user", JSON.stringify(data.data));
+                  navigate("/");
+                } else {
+                  setError(data.message || "Đăng nhập Facebook thất bại.");
+                }
+              })
+              .catch(() => {
+                setError("Không thể kết nối tới máy chủ. Vui lòng thử lại sau.");
+              });
+          });
         } else {
-          setError("Đăng nhập Facebook thất bại.");
+          setError("Đăng nhập Facebook thất bại hoặc bị huỷ.");
         }
       },
       { scope: "email,public_profile" }
