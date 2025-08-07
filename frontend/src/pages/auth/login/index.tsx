@@ -19,7 +19,7 @@ declare global {
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const FACEBOOK_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID; 
 
-const login: React.FC = () => {
+const Login: React.FC = () => {
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -298,5 +298,5 @@ const login: React.FC = () => {
   );
 };
 
-export default login;
+export default Login;
 

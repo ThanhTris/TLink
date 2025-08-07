@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { register as registerApi } from "../../../api/auth";
 import Toast from "../../../components/Toast";
 
-const register: React.FC = () => {
+const Register: React.FC = () => {
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [fullname, setFullname] = useState("");
   const [password, setPassword] = useState("");
@@ -204,4 +204,4 @@ const register: React.FC = () => {
   );
 };
 
-export default register;
+export default Register;
