@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { categories } from "../constants/sidebarCategories";
+import { categories, getCategoryMainPath } from "../constants/sidebarCategories";
 import { ChevronDown, ChevronRight, Tag } from "lucide-react";
 import Button from "./Button";
 
@@ -21,28 +21,6 @@ const Sidebar: React.FC = () => {
 
   const isSectionActive = (section: { path: string }) =>
     location.pathname === section.path;
-
-  // Map tên category lớn sang path lớn
-  const getCategoryMainPath = (category: string) => {
-    switch (category) {
-      case "Lập trình":
-        return "/dev";
-      case "Hệ điều hành":
-        return "/os";
-      case "Bảo mật & mạng":
-        return "/security";
-      case "Tài nguyên học tập":
-        return "/resources";
-      case "Tuyển dụng & nghề nghiệp":
-        return "/career";
-      case "Thảo luận chung":
-        return "/general";
-      default:
-        return (
-          categories.find((c) => c.name === category)?.sections[0]?.path || "/"
-        );
-    }
-  };
 
   return (
     <aside className="fixed top-[64px] left-0 h-[calc(100vh-64px)] w-64 bg-white border-r border-black/10 shadow-md px-2 py-4 overflow-y-auto sidebar-hide-scrollbar">
@@ -162,6 +140,7 @@ const Sidebar: React.FC = () => {
     </aside>
   );
 };
+
 
 
 export default Sidebar;

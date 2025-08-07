@@ -92,3 +92,30 @@ export const categories: SidebarCategory[] = [
     ],
   },
 ];
+
+export const getCategoryMainPath = (category: string) => {
+  switch (category) {
+    case "Lập trình":
+      return "/dev";
+    case "Hệ điều hành":
+      return "/os";
+    case "Bảo mật & mạng":
+      return "/security";
+    case "Tài nguyên học tập":
+      return "/resources";
+    case "Tuyển dụng & nghề nghiệp":
+      return "/career";
+    case "Thảo luận chung":
+      return "/general";
+    case "Trang chủ":
+      return "/";
+    case "Phổ biến":
+      return "/popular";
+    case "Đã lưu":
+      return "/saved";
+    default:
+      return (
+        categories.find((c) => c.name === category)?.sections[0]?.path || "/"
+      );
+  }
+};
