@@ -7,13 +7,16 @@ import { useNavigate } from 'react-router-dom';
 interface HeaderProps {
   isLoggedIn: boolean;
   username?: string;
+  avatar?: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ isLoggedIn, username }) => {
+const Header: React.FC<HeaderProps> = ({ isLoggedIn, username, avatar }) => {
   const [openMenu, setOpenMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const handleLogin = () => {
+    localStorage.removeItem("user"); // Xoá user khỏi localStorage khi đăng xuất
+    setOpenMenu(false); // Đóng menu khi đăng xuất
     navigate('/auth/login');
   };
   const handleRegister = () => {
@@ -37,7 +40,12 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, username }) => {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex flex-row items-center h-16 p-4 bg-white border-b shadow-md border-black/10">
-      <h1 className="text-xl font-bold">ForumTech</h1>
+      <h1
+        className="text-xl font-bold cursor-pointer"
+        onClick={() => navigate("/")}
+      >
+        ForumTech
+      </h1>
       <SearchBar />
       <div className="flex items-center justify-around ml-auto min-w-70 ">
         {isLoggedIn ? (
@@ -47,7 +55,7 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, username }) => {
               onClick={() => setOpenMenu((v) => !v)}
             >
               <img
-                src="https://tse3.mm.bing.net/th/id/OIP.cVIjZO1CHBYfqIB04Kb9LgHaFj?w=1400&h=1050&rs=1&pid=ImgDetMain&o=7&rm=3"
+                src={avatar}
                 alt="User Avatar"
                 className="object-cover w-8 h-8 rounded-full"
               />
