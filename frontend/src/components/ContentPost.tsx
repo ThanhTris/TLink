@@ -8,51 +8,45 @@ import { useDispatch } from "react-redux";
 
 interface ContentProps {
   id: number;
-  user_id: number;
+  name: string;
   title: string;
   content: string;
-  status: string;
-  likes: number;
-  comments: number;
-  createdAt: Date;
-  updated_at: Date;
-  tagParent: string;
-  tagChild: string;
-  initialComments?: any[];
-  initialLikes?: any[];
-  initialFavorites?: any[];
+  like_count: number;
+  comment_count: number;
+  is_saved: boolean;
+  is_like: boolean;
+  created_at: Date;
+  parent_tags: string[];
+  child_tags: string[];
 }
 
 const ContentPost: React.FC<ContentProps> = ({
   id,
-  user_id,
+  name,
   title,
-  createdAt,
-  updated_at,
-  tagParent,
-  tagChild,
   content,
-  status,
-  likes,
-  comments: initialCommentsCount,
-  initialComments = [],
-  initialLikes = [],
-  initialFavorites = [],
+  like_count,
+  comment_count,
+  is_saved,
+  is_like,
+  created_at,
+  parent_tags,
+  child_tags,
 }) => {
   const dispatch = useDispatch();
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(likes);
+  const [liked, setLiked] = useState(is_like);
+  const [likeCount, setLikeCount] = useState(like_count);
+  const [isBookmarked, setIsBookmarked] = useState(is_saved);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(initialFavorites.length > 0);
-  const [comments, setComments] = useState<any[]>(initialComments);
-  const timeAgo = getTimeAgo(createdAt);
+  const [comments, setComments] = useState<any[]>([]);
+  const timeAgo = getTimeAgo(created_at);
 
   const handleLike = async () => {
     const newLiked = !liked;
     setLiked(newLiked);
     setLikeCount((prev) => (newLiked ? prev + 1 : prev - 1));
-    await postService.addLike(id, 1);
+    // await postService.addLike(id, 1); // Nếu cần gọi API thì mở lại
   };
 
   const toggleReadMore = () => setIsExpanded((v) => !v);
@@ -60,8 +54,8 @@ const ContentPost: React.FC<ContentProps> = ({
   const toggleBookmark = () => setIsBookmarked((v) => !v);
 
   const addComment = async (content: string) => {
-    const newComment = await postService.addComment(id, content, 1);
-    setComments((prev) => [...prev, newComment]);
+    // const newComment = await postService.addComment(id, content, 1);
+    // setComments((prev) => [...prev, newComment]);
   };
 
   return (
@@ -79,19 +73,22 @@ const ContentPost: React.FC<ContentProps> = ({
           />
         </Button>
       </div>
-      <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
-        <span>Đăng bởi User_{user_id}</span>
+      <div className="flex items-center flex-wrap gap-2 mb-2 text-sm text-gray-500">
+        <span>Đăng bởi {name}</span>
         <span>• {timeAgo}</span>
+        {parent_tags.map((tag, idx) => (
+          <span key={`parent-tag-${idx}`} className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded-full">
+            #{tag}nb
+          </span>
+        ))}
+        {child_tags.map((tag, idx) => (
+          <span key={`child-tag-${idx}`} className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded-full">
+            #{tag}
+          </span>
+        ))}
+    
       </div>
-      <div className="flex flex-wrap gap-1 mb-2">
-        <span className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded-full">
-          #{tagParent}
-        </span>
-        <span className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded-full">
-          #{tagChild}
-        </span>
-      </div>
-       <div
+      <div
         className={`text-gray-800 mb-3 relative ${
           !isExpanded ? "line-clamp-3 min-h-[36px] max-h-[72px] overflow-hidden" : ""
         }`}
@@ -129,7 +126,7 @@ const ContentPost: React.FC<ContentProps> = ({
           onClick={toggleComments}
         >
           <MessageCircle size={16} />
-          {comments.length || initialCommentsCount} Bình luận
+          {comments.length || comment_count} Bình luận
         </Button>
       </div>
       {showComments && (
