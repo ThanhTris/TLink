@@ -18,6 +18,7 @@ interface ContentProps {
   created_at: Date;
   parent_tags: string[];
   child_tags: string[];
+  initialComments?: any[]; // thêm
 }
 
 const ContentPost: React.FC<ContentProps> = ({
@@ -32,6 +33,7 @@ const ContentPost: React.FC<ContentProps> = ({
   created_at,
   parent_tags,
   child_tags,
+  initialComments = [], // thêm
 }) => {
   const dispatch = useDispatch();
   const [liked, setLiked] = useState(is_like);
@@ -39,7 +41,7 @@ const ContentPost: React.FC<ContentProps> = ({
   const [isBookmarked, setIsBookmarked] = useState(is_saved);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [comments, setComments] = useState<any[]>([]);
+  const [comments, setComments] = useState<any[]>(initialComments); // dùng initialComments
   const timeAgo = getTimeAgo(created_at);
 
   const handleLike = async () => {
