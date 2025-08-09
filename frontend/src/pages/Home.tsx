@@ -382,6 +382,7 @@ const home: React.FC = () => {
           created_at={post.created_at}
           parent_tags={post.parent_tags}
           child_tags={post.child_tags}
+          initialComments={mockComments.filter(c => c.post_id === post.id)} // thêm
         />
       ))}
     </div>
