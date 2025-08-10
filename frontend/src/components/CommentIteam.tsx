@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Heart } from "lucide-react";
 import Button from "./Button";
+import ReplyIteam from "./ReplyIteam";
 
 interface CommentIteamProps {
   avatar: string;
@@ -27,6 +28,10 @@ interface CommentIteamProps {
   onDelete?: () => void;
   onHide?: () => void;
   onShow?: () => void;
+  // new: tên người được mention (nếu có) để render prefix
+  mentionName?: string;
+  // new: callback xóa mention (set mention_user_id = null)
+  onClearMention?: () => void;
 }
 
 const CommentIteam: React.FC<CommentIteamProps> = ({
@@ -51,11 +56,13 @@ const CommentIteam: React.FC<CommentIteamProps> = ({
   onDelete,
   onHide,
   onShow,
+  mentionName,
+  onClearMention,
 }) => {
   const showArc = level > 1;
 
   return (
-    <div className="relative flex mb-6">      {/* Đường cong từ đường dọc đến góc 9h của avatar: level > 1 luôn có */}
+    <div className="relative flex mb-6">
       {showArc && (
         <div
           className="absolute"
@@ -78,115 +85,126 @@ const CommentIteam: React.FC<CommentIteamProps> = ({
         className="w-10 h-10 rounded-full mr-3 z-10 border-3 border-blue-400"
         style={{ position: "relative" }}
       />
-      <div className="flex-1">
-        <div className="flex items-start">
-          <div className="flex-1">
-            <div className="flex items-center">
-              <span className="font-semibold">{name}</span>
-              <span className="ml-2 text-xs text-gray-500">
-                {createdAt.toLocaleString()}
-              </span>
-            </div>
-          </div>
-          {/* Menu ... ở góc trên phải */}
-          <div className="relative ml-2">
-            <Button
-              onClick={onToggleMenu}
-              className="text-gray-500 hover:text-gray-700 focus:outline-none px-2"
-              aria-label="menu"
-            >
-              ...
-            </Button>
-            {menuOpen && (
-              <div className="absolute right-0 mt-2 w-36 bg-white border rounded-md shadow-lg z-10">
-                {isOwn ? (
-                  <>
-                    {!isEditing && (
-                      <>
-                        <Button
-                          onClick={onStartEdit}
-                          className="block w-full text-left px-4 py-2 text-blue-600 hover:bg-gray-100"
-                        >
-                          Chỉnh sửa
-                        </Button>
-                        <Button
-                          onClick={onDelete}
-                          className="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
-                        >
-                          Xóa
-                        </Button>
-                      </>
-                    )}
-                    {isEditing && (
-                      <Button
-                        onClick={onSaveEdit}
-                        className="block w-full text-left px-4 py-2 text-green-600 hover:bg-gray-100"
-                      >
-                        Lưu
-                      </Button>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {!isHidden ? (
-                      <Button
-                        onClick={onHide}
-                        className="block w-full text-left px-4 py-2 text-yellow-600 hover:bg-gray-100"
-                      >
-                        Ẩn
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={onShow}
-                        className="block w-full text-left px-4 py-2 text-blue-600 hover:bg-gray-100"
-                      >
-                        Hiện lại
-                      </Button>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Nội dung / chỉnh sửa */}
-        {!isEditing ? (
-          <p className="mt-1 text-gray-800 break-words">
-            {isHidden ? "[Bình luận đã bị ẩn]" : content}
-          </p>
-        ) : (
-          <input
-            type="text"
-            value={editContent}
-            onChange={(e) => onEditChange?.(e.target.value)}
-            className="w-full p-2 mt-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                onSaveEdit?.();
+      {/* Khi chỉnh sửa: tái sử dụng UI của ReplyIteam (giữ avatar, phần còn lại là input + send) */}
+      {isEditing ? (
+        <div className="flex-1">
+          <ReplyIteam
+            level={level}
+            currentUserAvatar={avatar}
+            value={mentionName ? `@${mentionName} ${editContent}` : editContent}
+            placeholder="Chỉnh sửa bình luận..."
+            onChange={(v) => {
+              const prefix = mentionName ? `@${mentionName} ` : "";
+              if (mentionName && !v.startsWith(prefix)) {
+                // người dùng đã xóa @Tên -> clear mention_user_id
+                onClearMention?.();
+                onEditChange?.(v);
+              } else {
+                onEditChange?.(mentionName ? v.slice(prefix.length) : v);
               }
             }}
+            onSubmit={() => onSaveEdit?.()}
+            mentionPrefix={mentionName ? `@${mentionName}` : undefined}
+            autoFocus
+            hideAvatar
           />
-        )}
-
-        <div className="flex items-center gap-4 mt-2 text-sm">
-          <Button
-            className={`flex items-center gap-1 ${
-              is_like ? "text-red-500" : "text-gray-500"
-            } focus:outline-none`}
-            onClick={onLike}
-          >
-            <Heart
-              size={16}
-              color={is_like ? "#ef4444" : "gray"}
-              fill={is_like ? "#ef4444" : "none"}
-            />
-            {like_count} Thích
-          </Button>
-          <Button onClick={onReply}>Trả lời</Button>
         </div>
-      </div>
+      ) : (
+        <div className="flex-1">
+          <div className="flex items-start">
+            <div className="flex-1">
+              <div className="flex items-center">
+                <span className="font-semibold">{name}</span>
+                <span className="ml-2 text-xs text-gray-500">
+                  {createdAt.toLocaleString()}
+                </span>
+              </div>
+            </div>
+            {/* Menu ... ở góc trên phải */}
+            <div className="relative ml-2">
+              <Button
+                onClick={onToggleMenu}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none px-2"
+                aria-label="menu"
+              >
+                ...
+              </Button>
+              {menuOpen && (
+                <div className="absolute right-0 mt-2 w-36 bg-white rounded-md shadow-lg z-10">
+                  {isOwn ? (
+                    <>
+                      {!isEditing && (
+                        <>
+                          <Button
+                            onClick={onStartEdit}
+                            className="block w-full text-left px-4 py-2 rounded-md text-blue-600 hover:bg-gray-100"
+                          >
+                            Chỉnh sửa
+                          </Button>
+                          <Button
+                            onClick={onDelete}
+                            className="block w-full text-left px-4 py-2 rounded-md text-red-600 hover:bg-gray-100"
+                          >
+                            Xóa
+                          </Button>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {!isHidden ? (
+                        <Button
+                          onClick={onHide}
+                          className="block w-full text-left px-4 py-2 text-yellow-600 rounded-md hover:bg-gray-100"
+                        >
+                          Ẩn bình luận
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={onShow}
+                          className="block w-full text-left px-4 py-2 text-blue-600 rounded-md hover:bg-gray-100"
+                        >
+                          Hiện bình luận
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Nội dung hiển thị khi KHÔNG chỉnh sửa */}
+          <p className="mt-1 text-gray-800 break-words">
+            {isHidden ? (
+              "[Bình luận đã bị ẩn]"
+            ) : (
+              <>
+                {mentionName && <span className="font-semibold">@{mentionName} </span>}
+                {content}
+              </>
+            )}
+          </p>
+
+          <div className="flex items-center gap-4 mt-2 text-sm">
+            <Button
+              className={`flex items-center gap-1 ${
+                is_like ? "text-red-500" : "text-gray-500"
+              } focus:outline-none`}
+              onClick={onLike}
+            >
+              <Heart
+                size={16}
+                color={is_like ? "#ef4444" : "gray"}
+                fill={is_like ? "#ef4444" : "none"}
+              />
+              {like_count} Thích
+            </Button>
+            <Button onClick={onReply}>Trả lời</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

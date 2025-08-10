@@ -65,6 +65,8 @@ interface FEComment {
   is_like: boolean;
   replies?: FEComment[];
   isHidden?: boolean;
+  // new: id user được mention khi nhấn Reply
+  mention_user_id?: number | null;
 }
 
 interface CommentSectionProps {
@@ -115,6 +117,8 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
       avatar: getUserInfo(c.user_id).avatar,
       like_count: getCommentLikeCount(c.id),
       is_like: isCommentLiked(c.id, currentUserId),
+      // new: lấy mention_user_id nếu có, mặc định null
+      mention_user_id: c.mention_user_id ?? null,
     }));
 
   // State lưu mảng phẳng
@@ -129,6 +133,14 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
   const [replyTo, setReplyTo] = useState<number | null>(null);
   const [newReply, setNewReply] = useState("");
   const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({}); // thêm
+  // ô nào cần focus
+  const [replyFocusId, setReplyFocusId] = useState<number | null>(null);
+  // lưu prefix "@Tên" cho từng ô reply (theo comment container id)
+  const [replyMentions, setReplyMentions] = useState<Record<number, string | undefined>>({});
+  // new: lưu user_id của người được mention theo containerId
+  const [replyMentionUserIds, setReplyMentionUserIds] = useState<Record<number, number | null>>({});
+  // new: tick to retrigger focus even when focusing the same box
+  const [replyFocusTick, setReplyFocusTick] = useState(0);
   const [showMenuId, setShowMenuId] = useState<number | null>(null);
   const [editCommentId, setEditCommentId] = useState<number | null>(null);
   const [editContent, setEditContent] = useState("");
@@ -161,13 +173,19 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
     }
   };
 
-  // Thêm reply (child) cho parent
+  // Thêm reply (child) cho parent (là comment có chứa ô reply)
   const addReply = async (parent: FEComment, contentOverride?: string) => {
     const text = (contentOverride ?? "").trim() || newReply.trim();
     if (!text) return;
 
     const userInfo = getUserInfo(currentUserId);
     const nextLevel = Math.min((parent.level || 1) + 1, 3);
+
+    // new: nếu đang có mention thì loại bỏ "@Tên " khỏi content khi lưu
+    const mentionText = replyMentions[parent.id]; // dạng "@Tên"
+    const prefixWithSpace = mentionText ? `${mentionText} ` : "";
+    const contentToSave =
+      mentionText && text.startsWith(prefixWithSpace) ? text.slice(prefixWithSpace.length) : text;
 
     const replyObj: FEComment = {
       id: Date.now() + Math.random(),
@@ -177,33 +195,56 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
       avatar: userInfo.avatar,
       parent_id: parent.id,
       level: nextLevel,
-      content: text,
+      content: contentToSave,
       createdAt: new Date(),
       like_count: 0,
       is_like: false,
+      // new: gắn user được mention (nếu có)
+      mention_user_id: replyMentionUserIds[parent.id] ?? null,
     };
-    await postService.addComment(post_id, text, currentUserId);
+    await postService.addComment(post_id, contentToSave, currentUserId);
     setFlatComments((prev) => [...prev, replyObj]);
 
-    // clear draft cho parent
+    // clear draft/prefix/focus cho ô của parent
     setReplyDrafts((prev) => {
       const { [parent.id]: _, ...rest } = prev;
       return rest;
     });
+    setReplyMentions((prev) => {
+      const { [parent.id]: __, ...rest } = prev;
+      return rest;
+    });
+    // new: clear mention user id map
+    setReplyMentionUserIds((prev) => {
+      const { [parent.id]: ___, ...rest } = prev;
+      return rest;
+    });
+    setReplyFocusId(null);
     setNewReply("");
     setReplyTo(null);
   };
 
-  // Khi bấm Trả lời trên item -> prepend @name vào draft của chính comment đó
+  // Khi bấm Trả lời: nếu là level 3 thì route về ô reply của cha (level 2)
   const handleReplyClick = (target: FEComment) => {
+    const containerId =
+      target.level >= 3 && target.parent_id ? target.parent_id : target.id;
     const mention = `@${target.name} `;
-    setReplyDrafts((prev) => {
-      const current = prev[target.id] ?? "";
-      return {
-        ...prev,
-        [target.id]: current.startsWith(mention) ? current : mention + current,
-      };
-    });
+
+    setReplyDrafts((prev) => ({
+      ...prev,
+      [containerId]: mention, // ghi đè mỗi lần
+    }));
+    setReplyMentions((prev) => ({
+      ...prev,
+      [containerId]: `@${target.name}`,
+    }));
+    // new: lưu user được mention để gắn vào reply khi submit
+    setReplyMentionUserIds((prev) => ({
+      ...prev,
+      [containerId]: target.user_id,
+    }));
+    setReplyFocusId(containerId);
+    setReplyFocusTick((t) => t + 1);
   };
 
   const onInlineKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, parent: FEComment) => {
@@ -289,6 +330,21 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
     const showInlineAtThisLevel = level === 1 || level === 2;
     const shouldDrawVertical = level === 1 || level === 2;
 
+    function clearMention(id: number): void {
+      setReplyMentions(prev => {
+      const { [id]: _, ...rest } = prev;
+      return rest;
+      });
+      setReplyMentionUserIds(prev => {
+      const { [id]: __, ...rest } = prev;
+      return rest;
+      });
+      setReplyDrafts(prev => {
+      const { [id]: ___, ...rest } = prev;
+      return rest;
+      });
+    }
+
     return (
       <div
         key={comment.id}
@@ -338,6 +394,10 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
           onDelete={() => deleteComment(comment.id)}
           onHide={() => hideComment(comment.id)}
           onShow={() => showComment(comment.id)}
+          // render prefix khi có mention_user_id
+          mentionName={comment.mention_user_id ? getUserInfo(comment.mention_user_id).name : undefined}
+          // new: cho phép clear mention khi xóa @ trong edit mode
+          onClearMention={() => clearMention(comment.id)}
         />
 
         {hasChildren && (
@@ -353,10 +413,33 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
               currentUserAvatar={getUserInfo(currentUserId).avatar}
               value={replyDrafts[comment.id] ?? ""}
               placeholder={`Trả lời ${comment.name}`}
-              onChange={(v) =>
-                setReplyDrafts((prev) => ({ ...prev, [comment.id]: v }))
-              }
+              onChange={(v) => {
+                // cập nhật nội dung
+                setReplyDrafts((prev) => ({ ...prev, [comment.id]: v }));
+                // nếu người dùng đã xóa prefix thì bỏ overlay và mention_user_id
+                setReplyMentions((prev) => {
+                  const mention = prev[comment.id];
+                  if (mention && !v.startsWith(`${mention} `)) {
+                    const { [comment.id]: _, ...rest } = prev;
+                    return rest;
+                  }
+                  return prev;
+                });
+                // new: khi xóa prefix thì bỏ luôn user id được mention
+                setReplyMentionUserIds((prev) => {
+                  const currentMention = replyMentions[comment.id];
+                  if (currentMention && !v.startsWith(`${currentMention} `)) {
+                    const { [comment.id]: __, ...rest } = prev;
+                    return rest;
+                  }
+                  return prev;
+                });
+              }}
               onSubmit={() => addReply(comment, replyDrafts[comment.id] ?? "")}
+              // hiển thị prefix in đậm và focus đúng ô
+              mentionPrefix={replyMentions[comment.id]}
+              autoFocus={replyFocusId === comment.id}
+              focusTick={replyFocusTick}
             />
           </div>
         )}
