@@ -3,7 +3,7 @@ import { Heart, MessageCircle, Bookmark } from "lucide-react";
 import Button from "./Button";
 import CommentSection from "./CommentPostSection";
 import { getTimeAgo } from "../utils/timeAgo";
-import { postService } from "../services/postService";
+import { likePost as apiLikePost, unlikePost as apiUnlikePost, getCurrentUserIdFromLocalStorage } from "../api/post";
 import { useDispatch } from "react-redux";
 
 interface ContentProps {
@@ -19,6 +19,8 @@ interface ContentProps {
   parent_tags: string[];
   child_tags: string[];
   initialComments?: any[]; // thêm
+  images?: string[];
+  files?: { name: string; url: string }[];
 }
 
 const ContentPost: React.FC<ContentProps> = ({
@@ -34,6 +36,8 @@ const ContentPost: React.FC<ContentProps> = ({
   parent_tags,
   child_tags,
   initialComments = [], // thêm
+  images = [],
+  files = [],
 }) => {
   const dispatch = useDispatch();
   const [liked, setLiked] = useState(is_like);
@@ -45,10 +49,22 @@ const ContentPost: React.FC<ContentProps> = ({
   const timeAgo = getTimeAgo(created_at);
 
   const handleLike = async () => {
+    const uid = getCurrentUserIdFromLocalStorage();
+    if (!uid) return; // chưa đăng nhập -> bỏ qua (hoặc mở modal login nếu cần)
     const newLiked = !liked;
     setLiked(newLiked);
-    setLikeCount((prev) => (newLiked ? prev + 1 : prev - 1));
-    // await postService.addLike(id, 1); // Nếu cần gọi API thì mở lại
+    setLikeCount((prev) => (newLiked ? prev + 1 : prev - 1)); // optimistic
+    try {
+      if (newLiked) {
+        await apiLikePost(id, uid);
+      } else {
+        await apiUnlikePost(id, uid);
+      }
+    } catch {
+      // rollback on error
+      setLiked((prev) => !prev);
+      setLikeCount((prev) => (newLiked ? prev - 1 : prev + 1));
+    }
   };
 
   const toggleReadMore = () => setIsExpanded((v) => !v);
@@ -80,7 +96,7 @@ const ContentPost: React.FC<ContentProps> = ({
         <span>• {timeAgo}</span>
         {parent_tags.map((tag, idx) => (
           <span key={`parent-tag-${idx}`} className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded-full">
-            #{tag}nb
+            #{tag}
           </span>
         ))}
         {child_tags.map((tag, idx) => (
@@ -106,6 +122,38 @@ const ContentPost: React.FC<ContentProps> = ({
           </span>
         )}
       </div>
+      {/* images gallery */}
+      {images.length > 0 && (
+        <div className="mb-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {images.map((src, idx) => (
+            <a key={`post-img-${idx}`} href={src} target="_blank" rel="noreferrer">
+              <img
+                src={src}
+                alt={`img-${idx}`}
+                className="w-full h-40 object-cover rounded-lg border border-gray-300"
+                loading="lazy"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+      {/* files list */}
+      {files.length > 0 && (
+        <div className="mb-3">
+          {files.map((f, idx) => (
+            <div key={`post-file-${idx}`} className="flex items-center gap-2 text-sm">
+              <a
+                href={f.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-600 hover:underline break-all"
+              >
+                {f.name || f.url}
+              </a>
+            </div>
+          ))}
+        </div>
+      )}
       {isExpanded && (
         <Button onClick={toggleReadMore} className="text-blue-500 hover:text-blue-700">
           Thu gọn
@@ -113,16 +161,14 @@ const ContentPost: React.FC<ContentProps> = ({
       )}
       <div className="flex gap-6 mb-3 text-sm text-gray-500">
         <Button
-          className="flex items-center gap-1 cursor-pointer focus:outline-none"
-          onClick={handleLike}
-        >
-          <Heart
-            size={16}
-            color={liked ? "#ef4444" : "gray"}
-            fill={liked ? "#ef4444" : "none"}
-          />
-          {likeCount} Thích
-        </Button>
+          className={`flex items-center gap-1 cursor-pointer focus:outline-none ${
+            liked ? "text-red-500 hover:text-red-600" : "text-gray-600 hover:text-gray-800"
+          }`}
+           onClick={handleLike}
+         >
+          <Heart size={16} fill={liked ? "currentColor" : "none"} />
+           {likeCount} Thích
+         </Button>
         <Button
           className="flex items-center gap-1 cursor-pointer focus:outline-none"
           onClick={toggleComments}
