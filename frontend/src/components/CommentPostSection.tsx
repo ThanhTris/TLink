@@ -7,6 +7,7 @@ import type { Comment } from "../types/comment";
 import { buildCommentTree } from "../utils/buildCommentTree";
 import CommentIteam from "./CommentIteam";
 import ReplyIteam from "./ReplyIteam";
+import { getCurrentUserIdFromLocalStorage } from "../api/post";
 
 // Giả lập dữ liệu users
 const mockUsers = [
@@ -76,7 +77,7 @@ interface CommentSectionProps {
   post_id: number;
 }
 
-const currentUserId = 2; // user hiện tại
+const currentUserId = getCurrentUserIdFromLocalStorage() ?? 0; // user hiện tại
 
 // Hàm lấy tên và avatar user
 function getUserInfo(user_id: number) {
