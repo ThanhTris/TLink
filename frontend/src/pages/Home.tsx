@@ -33,19 +33,37 @@ const home: React.FC = () => {
         setLoading(true);
         const res = await getPostsByCategory("/home", 10, 0); // userId auto from localStorage
         const items = (res as { data?: { data?: any[] } })?.data?.data ?? [];
-        const mapped: FEPost[] = items.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          title: p.title,
-          content: p.content,
-          like_count: Number(p.like_count ?? 0),
-          comment_count: Number(p.comment_count ?? 0),
-          is_saved: !!p.is_saved,
-          is_like: !!p.is_like,
-          created_at: toDate(p.created_at),
-          parent_tags: Array.isArray(p.parent_tags) ? p.parent_tags : [],
-          child_tags: Array.isArray(p.child_tags) ? p.child_tags : [],
-        }));
+        const mapped: FEPost[] = items.map((p: any) => {
+          if (Array.isArray(p)) {
+            // [0]=id, [1]=title, [2]=content, [3]=likes, [4]=comments, [5]=created_at, [6]=user_name
+            return {
+              id: Number(p[0]),
+              name: p[6] ?? "",
+              title: p[1] ?? "",
+              content: p[2] ?? "",
+              like_count: Number(p[3] ?? 0),
+              comment_count: Number(p[4] ?? 0),
+              is_saved: false,
+              is_like: false,
+              created_at: toDate(p[5]),
+              parent_tags: [],
+              child_tags: [],
+            };
+          }
+          return {
+            id: p.id,
+            name: p.name,
+            title: p.title,
+            content: p.content ?? "",
+            like_count: Number(p.like_count ?? 0),
+            comment_count: Number(p.comment_count ?? 0),
+            is_saved: !!p.is_saved,
+            is_like: !!p.is_like,
+            created_at: toDate(p.created_at),
+            parent_tags: Array.isArray(p.parent_tags) ? p.parent_tags : [],
+            child_tags: Array.isArray(p.child_tags) ? p.child_tags : [],
+          };
+        });
         if (mounted) setPosts(mapped);
       } catch (e: any) {
         if (mounted) setError(e?.message || "Không tải được bài viết");

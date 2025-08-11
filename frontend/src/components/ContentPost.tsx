@@ -76,6 +76,8 @@ const ContentPost: React.FC<ContentProps> = ({
     // setComments((prev) => [...prev, newComment]);
   };
 
+  const textContent = typeof content === "string" ? content : String(content ?? "");
+
   return (
     <div className="relative px-5 pt-5 pb-2 mt-6 bg-gray-200 shadow-sm rounded-xl w-full">
       <div className="flex items-center justify-between mb-1">
@@ -112,8 +114,8 @@ const ContentPost: React.FC<ContentProps> = ({
         }`}
         style={{ wordBreak: "break-word" }}
       >
-        {content}
-        {!isExpanded && content.length > 100 && (
+        {textContent}
+        {!isExpanded && textContent.length > 100 && (
           <span
             className="absolute right-0 bottom-0 bg-gray-200 pl-2 cursor-pointer text-blue-500 hover:underline"
             onClick={toggleReadMore}

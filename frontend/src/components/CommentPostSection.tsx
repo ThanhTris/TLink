@@ -7,7 +7,7 @@ import type { Comment } from "../types/comment";
 import { buildCommentTree } from "../utils/buildCommentTree";
 import CommentIteam from "./CommentIteam";
 import ReplyIteam from "./ReplyIteam";
-import { getCurrentUserIdFromLocalStorage } from "../api/post";
+ import { getCurrentUserIdFromLocalStorage } from "../api/post";
 
 // Giả lập dữ liệu users
 const mockUsers = [
