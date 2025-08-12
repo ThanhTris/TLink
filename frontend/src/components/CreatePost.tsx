@@ -57,22 +57,62 @@ interface CreatePostProps {
     user_id: number;
     tagParent: string;
     tagChild?: string;
-    childTags?: string[]; // all selected/created child tags
+    childTags?: string[];
     imageFiles?: File[];
     docFiles?: File[];
+    // thêm: dữ liệu tồn tại (khi chỉnh sửa)
+    existingImageUrls?: string[];
+    existingDocUrls?: { name: string; url: string }[];
   }) => void;
+  // thêm: hỗ trợ chế độ chỉnh sửa với dữ liệu ban đầu
+  mode?: "create" | "edit";
+  initialTitle?: string;
+  initialContent?: string;
+  initialTagParent?: string;
+  initialChildTags?: string[];
+  initialImageUrls?: string[];
+  initialDocUrls?: { name: string; url: string }[];
+  heading?: string;
+  submitLabel?: string;
 }
 
-const CreatePost: React.FC<CreatePostProps> = ({ onCancel, onSubmit }) => {
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+const CreatePost: React.FC<CreatePostProps> = ({
+  onCancel,
+  onSubmit,
+  mode = "create",
+  initialTitle,
+  initialContent,
+  initialTagParent,
+  initialChildTags,
+  initialImageUrls = [],
+  initialDocUrls = [],
+  heading,
+  submitLabel,
+}) => {
+  const isEdit = mode === "edit";
+
+  const [title, setTitle] = useState(initialTitle || "");
+  const [content, setContent] = useState(initialContent || "");
   const [tagParent, setTagParent] = useState(
-    tagOptions[0]?.parent || "Thảo luận chung"
+    initialTagParent || tagOptions[0]?.parent || "Thảo luận chung"
   );
-  const [childTags, setChildTags] = useState<string[]>([]); // 0..n child tags
+  const [childTags, setChildTags] = useState<string[]>(initialChildTags || []);
+
+  // ảnh: tách ảnh tồn tại vs ảnh mới
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>(initialImageUrls || []);
+  const [imageOrigins, setImageOrigins] = useState<("existing" | "new")[]>(
+    (initialImageUrls || []).map(() => "existing")
+  );
+
+  // tài liệu: tách tài liệu tồn tại vs tài liệu mới
   const [docFiles, setDocFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [existingDocUrls, setExistingDocUrls] = useState<{ name: string; url: string }[]>(
+    initialDocUrls || []
+  );
+
+  const [imagePreviewsStateVersion] = useState(0); // giữ place-holder cho deps cleanup
+
   const user_id = 1;
 
   const parentOptions = tagOptions.map((tag) => ({
@@ -130,28 +170,43 @@ const CreatePost: React.FC<CreatePostProps> = ({ onCancel, onSubmit }) => {
       imgs.forEach((f) => {
         const url = URL.createObjectURL(f);
         setImagePreviews((prev) => [...prev, url]);
+        setImageOrigins((prev) => [...prev, "new"]);
       });
     }
     if (docs.length) setDocFiles((prev) => [...prev, ...docs]);
   };
   const removeImageByIndex = (i: number) => {
-    setImageFiles((prev) => prev.filter((_, idx) => idx !== i));
-    setImagePreviews((prev) => {
-      // revoke the removed preview url
-      const url = prev[i];
-      if (url) URL.revokeObjectURL(url);
-      return prev.filter((_, idx) => idx !== i);
-    });
+    const url = imagePreviews[i];
+    const origin = imageOrigins[i];
+    if (origin === "new" && url?.startsWith("blob:")) {
+      URL.revokeObjectURL(url);
+    }
+    // nếu là ảnh mới: cần xóa đúng file tương ứng
+    if (origin === "new") {
+      const nthNew = imageOrigins.slice(0, i).filter((o) => o === "new").length;
+      setImageFiles((prev) => prev.filter((_, idx) => idx !== nthNew));
+    }
+    setImagePreviews((prev) => prev.filter((_, idx) => idx !== i));
+    setImageOrigins((prev) => prev.filter((_, idx) => idx !== i));
   };
-  const removeDocByIndex = (i: number) => {
+  const removeDocFileByIndex = (i: number) => {
     setDocFiles((prev) => prev.filter((_, idx) => idx !== i));
   };
+  const removeExistingDocByIndex = (i: number) => {
+    setExistingDocUrls((prev) => prev.filter((_, idx) => idx !== i));
+  };
+
   // cleanup created object URLs on unmount
   useEffect(() => {
     return () => {
-      imagePreviews.forEach((u) => URL.revokeObjectURL(u));
+      imagePreviews.forEach((u, idx) => {
+        if (imageOrigins[idx] === "new" && typeof u === "string" && u.startsWith("blob:")) {
+          URL.revokeObjectURL(u);
+        }
+      });
     };
-  }, [imagePreviews]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imagePreviewsStateVersion]);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -160,23 +215,28 @@ const CreatePost: React.FC<CreatePostProps> = ({ onCancel, onSubmit }) => {
   };
 
   const handleSubmit = () => {
+    const keptExistingImageUrls = imagePreviews.filter((_, i) => imageOrigins[i] === "existing");
     onSubmit?.({
       title,
       content,
       user_id,
       tagParent,
-      tagChild: childTags[0]?.trim() ? childTags[0].trim() : undefined, // backward-compatible
+      tagChild: childTags[0]?.trim() ? childTags[0].trim() : undefined,
       childTags: childTags.map((t) => t.trim()).filter(Boolean),
       imageFiles,
       docFiles,
+      existingImageUrls: keptExistingImageUrls,
+      existingDocUrls: existingDocUrls,
     });
   };
 
   const canSubmit = title.trim().length > 0 && content.trim().length > 0;
+  const headingText = heading || (isEdit ? "Chỉnh sửa bài viết" : "Tạo bài viết mới");
+  const submitText = submitLabel || (isEdit ? "Cập nhật" : "Đăng bài");
 
   return (
-    <div className="bg-gray-50 rounded-xl p-8 md:min-w-3xl max-w-3xl mx-auto">
-      <h3 className="text-xl font-semibold mb-6">Tạo bài viết mới</h3>
+    <div className="bg-gray-50 rounded-xl p-6 w-full max-w-3xl mx-auto">
+      <h3 className="text-xl font-semibold mb-6">{headingText}</h3>
 
       <div className="mb-4">
         <label className="block font-medium mb-1">Tiêu đề bài viết</label>
@@ -192,7 +252,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ onCancel, onSubmit }) => {
       <div className="mb-4">
         <label className="block font-medium mb-1">Thẻ</label>
         <div className="flex gap-4">
-          <div className="w-2/5">
+          <div className="w-2/5 min-w-0">
             <Select
               options={parentOptions}
               value={parentOptions.find((opt) => opt.value === tagParent)}
@@ -216,7 +276,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ onCancel, onSubmit }) => {
               }}
             />
           </div>
-          <div className="w-3/5">
+          <div className="w-3/5 min-w-0">
             <CreatableSelect
               isMulti
               options={childOptions}
@@ -348,6 +408,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ onCancel, onSubmit }) => {
         />
       </div>
 
+      {/* ảnh xem trước: gồm cả ảnh tồn tại và mới */}
       {imagePreviews.length > 0 && (
         <div className="mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {imagePreviews.map((src, i) => (
@@ -364,6 +425,30 @@ const CreatePost: React.FC<CreatePostProps> = ({ onCancel, onSubmit }) => {
               >
                 <X size={14} />
               </Button>
+              <div className="absolute left-1 bottom-1 text-[10px] bg-white/80 px-1 rounded">
+                {imageOrigins[i] === "existing" ? "Tồn tại" : "Mới"}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* tài liệu: hiển thị tài liệu tồn tại và mới */}
+      {existingDocUrls.length > 0 && (
+        <div className="mb-2">
+          {existingDocUrls.map((f, i) => (
+            <div key={`exist-${i}`} className="flex items-center gap-2 text-sm">
+              <Paperclip size={14} />
+              <a href={f.url} target="_blank" rel="noreferrer" className="truncate text-blue-600 hover:underline">
+                {f.name || f.url}
+              </a>
+              <Button
+                onClick={() => removeExistingDocByIndex(i)}
+                className="text-gray-500 hover:text-gray-700"
+                title="Xóa"
+              >
+                <X size={14} />
+              </Button>
             </div>
           ))}
         </div>
@@ -376,7 +461,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ onCancel, onSubmit }) => {
               <Paperclip size={14} />
               <span className="truncate">{f.name}</span>
               <Button
-                onClick={() => removeDocByIndex(i)}
+                onClick={() => removeDocFileByIndex(i)}
                 className="text-gray-500 hover:text-gray-700"
                 title="Xóa"
               >
@@ -402,7 +487,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ onCancel, onSubmit }) => {
           disabled={!canSubmit}
           title={!canSubmit ? "Nhập tiêu đề và nội dung trước khi đăng" : undefined}
         >
-          Đăng bài
+          {submitText}
         </Button>
       </div>
     </div>
