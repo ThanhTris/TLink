@@ -183,7 +183,7 @@ const ContentPost: React.FC<ContentProps> = ({
               <Ellipsis size={20} />
             </Button>
             {menuOpen && (
-              <div className="absolute right-0 mt-1 w-56 bg-white border rounded shadow z-10 p-1">
+              <div className="absolute right-0 mt-1 w-56 bg-white rounded shadow z-10 p-1">
                 {!isOwner ? (
                   <>
                     {/* Ẩn/Hiện bài viết */}
@@ -193,7 +193,7 @@ const ContentPost: React.FC<ContentProps> = ({
                           setIsHidden(true);
                           setMenuOpen(false);
                         }}
-                        className="block w-full text-left px-4 py-2 rounded-md text-yellow-600 hover:bg-gray-100"
+                        className="block w-full text-left px-4 py-2 rounded-md hover:bg-gray-100"
                       >
                         <span className="flex items-center gap-2">
                           <EyeOff size={16} />
@@ -222,7 +222,7 @@ const ContentPost: React.FC<ContentProps> = ({
                           setIsBookmarked(true);
                           setMenuOpen(false);
                         }}
-                        className="block w-full text-left px-4 py-2 rounded-md text-yellow-600 hover:bg-gray-100"
+                        className="block w-full text-left px-4 py-2 rounded-md  hover:bg-gray-100"
                       >
                         <span className="flex items-center gap-2">
                           <BookmarkCheck size={16} />
