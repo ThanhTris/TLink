@@ -132,7 +132,7 @@ public class PostService {
             if ("/popular".equals(categoryPath)) {
                 // Lấy bài viết theo lượt thích và comment giảm dần
                 sql = "SELECT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                        "u.name AS user_name, u.avatar AS user_avatar " +
+                        "u.name AS user_name, u.avatar AS user_avatar, p.user_id " +
                         "FROM posts p " +
                         "JOIN users u ON p.user_id = u.id " +
                         "ORDER BY p.likes_count DESC, p.comment_count DESC, p.created_at DESC " +
@@ -151,7 +151,7 @@ public class PostService {
                     return new ApiResponseDTO(false, "User không tồn tại", null, "USER_NOT_FOUND");
                 }
                 sql = "SELECT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                        "u.name AS user_name, u.avatar AS user_avatar " +
+                        "u.name AS user_name, u.avatar AS user_avatar, p.user_id " +
                         "FROM posts p " +
                         "JOIN users u ON p.user_id = u.id " +
                         "JOIN post_saves ps ON p.id = ps.post_id " +
@@ -166,7 +166,7 @@ public class PostService {
             } else if ("/".equals(categoryPath) || "/home".equals(categoryPath)) {
                 // Lấy các bài viết mới nhất
                 sql = "SELECT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                        "u.name AS user_name, u.avatar AS user_avatar " +
+                        "u.name AS user_name, u.avatar AS user_avatar, p.user_id " +
                         "FROM posts p " +
                         "JOIN users u ON p.user_id = u.id " +
                         "ORDER BY p.created_at DESC " +
@@ -179,7 +179,7 @@ public class PostService {
                 List<String> childTagNames = getChildTagsForParentCategory(categoryPath);
                 if (!childTagNames.isEmpty()) {
                     sql = "SELECT DISTINCT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                            "u.name AS user_name, u.avatar AS user_avatar " +
+                            "u.name AS user_name, u.avatar AS user_avatar, p.user_id " +
                             "FROM posts p " +
                             "JOIN users u ON p.user_id = u.id " +
                             "LEFT JOIN post_child_tags pct ON p.id = pct.post_id " +
@@ -195,7 +195,7 @@ public class PostService {
                 } else {
                     String tagName = mapCategoryPathToTagName(categoryPath);
                     sql = "SELECT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                            "u.name AS user_name, u.avatar AS user_avatar " +
+                            "u.name AS user_name, u.avatar AS user_avatar, p.user_id " +
                             "FROM posts p " +
                             "JOIN users u ON p.user_id = u.id " +
                             "LEFT JOIN post_child_tags pct ON p.id = pct.post_id " +
@@ -274,7 +274,7 @@ public class PostService {
         try {
             // Tìm kiếm theo title, content, child tag, parent tag (chỉ cần 1 trường khớp là trả về)
             String sql = "SELECT DISTINCT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                    "u.name AS user_name, u.avatar AS user_avatar " +
+                    "u.name AS user_name, u.avatar AS user_avatar, p.user_id " +
                     "FROM posts p " +
                     "JOIN users u ON p.user_id = u.id " +
                     "LEFT JOIN post_child_tags pct ON p.id = pct.post_id " +
@@ -302,7 +302,8 @@ public class PostService {
         List<Map<String, Object>> formattedResults = new ArrayList<>();
         for (Object[] row : results) {
             Map<String, Object> post = new HashMap<>();
-            post.put("id", row[0]);
+            Long postId = ((Number) row[0]).longValue();
+            post.put("id", postId);
             post.put("title", row[1]);
             post.put("content", row[2]);
             post.put("likes_count", row[3]);
@@ -310,11 +311,53 @@ public class PostService {
             post.put("created_at", row[5]);
             post.put("user_name", row[6]);
             post.put("user_avatar", row[7]);
+            post.put("author_id", row[8]);
+            
+            // Lấy parent tags - chỉ lấy tên và nối thành chuỗi
+            String parentTagSql = "SELECT pt.name FROM parent_tags pt " +
+                    "JOIN post_parent_tags ppt ON pt.id = ppt.parent_tag_id " +
+                    "WHERE ppt.post_id = :postId";
+            List<String> parentTagNames = entityManager.createNativeQuery(parentTagSql)
+                    .setParameter("postId", postId)
+                    .getResultList();
+            
+            // Nối danh sách parent tag names thành một chuỗi ngăn cách bằng dấu phẩy
+            String parentTagsStr = String.join(", ", parentTagNames);
+            post.put("parent_tags", parentTagsStr);
+            
+            // Lấy child tags - chỉ lấy tên và nối thành chuỗi
+            String childTagSql = "SELECT ct.name FROM child_tags ct " +
+                    "JOIN post_child_tags pct ON ct.id = pct.child_tag_id " +
+                    "WHERE pct.post_id = :postId";
+            List<String> childTagNames = entityManager.createNativeQuery(childTagSql)
+                    .setParameter("postId", postId)
+                    .getResultList();
+            
+            // Nối danh sách child tag names thành một chuỗi ngăn cách bằng dấu phẩy
+            String childTagsStr = String.join(", ", childTagNames);
+            post.put("child_tags", childTagsStr);
+            
+            // Lấy image - chỉ lấy URL
+            String imageSql = "SELECT image_url FROM posts_image WHERE post_id = :postId";
+            List<String> imageResults = entityManager.createNativeQuery(imageSql)
+                    .setParameter("postId", postId)
+                    .getResultList();
+            
+            post.put("image", imageResults.isEmpty() ? null : imageResults.get(0));
+            
+            // Lấy file - chỉ lấy URL
+            String fileSql = "SELECT file_url FROM posts_file WHERE post_id = :postId";
+            List<String> fileResults = entityManager.createNativeQuery(fileSql)
+                    .setParameter("postId", postId)
+                    .getResultList();
+            
+            post.put("file", fileResults.isEmpty() ? null : fileResults.get(0));
+            
             formattedResults.add(post);
         }
         return formattedResults;
     }
-
+    
     // Trả về danh sách tên các tag con cho category cha (dùng path FE)
     private List<String> getChildTagsForParentCategory(String categoryPath) {
         switch (categoryPath) {
@@ -406,3 +449,5 @@ public class PostService {
         }
     }
 }
+        
+
