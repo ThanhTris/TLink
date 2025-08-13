@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import ContentHeader from "../components/ContentHeader";
 import CreatePost from "../components/CreatePost";
 import Content from "../components/ContentPost";
-import { getPostsByCategory } from "../api/post";
+import { getPostsByCategory, getCurrentUserIdFromLocalStorage } from "../api/post";
+import { parseMySQLDateVN } from "../utils/timeAgo"; // Import the correct date parsing function
 
 type FEPost = {
   id: number;
@@ -16,9 +17,17 @@ type FEPost = {
   created_at: Date;
   parent_tags: string[];
   child_tags: string[];
+  user_avatar?: string;
 };
 
-const toDate = (v: any) => (v ? new Date(v) : new Date());
+// Use the proper VN date parsing function
+const toDate = (v: any) => (v ? parseMySQLDateVN(v) : new Date());
+
+type PostsResponse = {
+  success: boolean;
+  message?: string;
+  data?: any[];
+};
 
 const home: React.FC = () => {
   const [showCreate, setShowCreate] = useState(false);
@@ -31,42 +40,38 @@ const home: React.FC = () => {
     (async () => {
       try {
         setLoading(true);
-        const res = await getPostsByCategory("/home", 10, 0); // userId auto from localStorage
-        const items = (res as { data?: { data?: any[] } })?.data?.data ?? [];
+        const userId = getCurrentUserIdFromLocalStorage();
+        const res = await getPostsByCategory("/home", 10, 0, userId || undefined);
+        
+        // Handle key-value response format from backend
+        const responseData = res?.data as PostsResponse;
+        if (!responseData?.success) {
+          throw new Error(responseData?.message || "Failed to fetch posts");
+        }
+        
+        const items = responseData?.data ?? [];
         const mapped: FEPost[] = items.map((p: any) => {
-          if (Array.isArray(p)) {
-            // [0]=id, [1]=title, [2]=content, [3]=likes, [4]=comments, [5]=created_at, [6]=user_name
-            return {
-              id: Number(p[0]),
-              name: p[6] ?? "",
-              title: p[1] ?? "",
-              content: p[2] ?? "",
-              like_count: Number(p[3] ?? 0),
-              comment_count: Number(p[4] ?? 0),
-              is_saved: false,
-              is_like: false,
-              created_at: toDate(p[5]),
-              parent_tags: [],
-              child_tags: [],
-            };
-          }
+          // Backend returns key-value objects with these field names
           return {
-            id: p.id,
-            name: p.name,
-            title: p.title,
+            id: Number(p.id),
+            name: p.user_name ?? "",
+            title: p.title ?? "",
             content: p.content ?? "",
-            like_count: Number(p.like_count ?? 0),
+            like_count: Number(p.likes_count ?? 0), 
             comment_count: Number(p.comment_count ?? 0),
-            is_saved: !!p.is_saved,
-            is_like: !!p.is_like,
-            created_at: toDate(p.created_at),
-            parent_tags: Array.isArray(p.parent_tags) ? p.parent_tags : [],
-            child_tags: Array.isArray(p.child_tags) ? p.child_tags : [],
+            is_saved: false, 
+            is_like: false,  
+            created_at: toDate(p.created_at), // Use the VN parsing function
+            parent_tags: [], 
+            child_tags: [],  
+            user_avatar: p.user_avatar,
           };
         });
+        
         if (mounted) setPosts(mapped);
       } catch (e: any) {
         if (mounted) setError(e?.message || "Không tải được bài viết");
+        console.error("Error fetching posts:", e);
       } finally {
         if (mounted) setLoading(false);
       }

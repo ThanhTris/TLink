@@ -1,48 +1,62 @@
 import axios from "axios";
 
-export function getCurrentUserIdFromLocalStorage(): number | undefined {
-  const tryRead = (raw: string | null): any | undefined => {
-    if (!raw) return undefined;
-    try {
-      return JSON.parse(raw);
-    } catch {
-      return undefined;
+export const getCurrentUserIdFromLocalStorage = (): number | null => {
+  try {
+    // 1) First try to get from "user" key (main login storage)
+    const userRaw = localStorage.getItem("user");
+    if (userRaw) {
+      try {
+        const userData = JSON.parse(userRaw);
+        if (userData?.id != null) {
+          const id = Number(userData.id);
+          return Number.isFinite(id) ? id : null;
+        }
+      } catch {
+        // ignore JSON parse errors
+      }
     }
-  };
-  // Direct numeric keys
-  const numericKeys = ["userId", "currentUserId"];
-  for (const k of numericKeys) {
-    const v = localStorage.getItem(k);
-    if (v && !Number.isNaN(Number(v))) return Number(v);
+
+    // 2) Fallback: Try other direct ID keys
+    const directKeys = ["user_id", "currentUserId", "uid", "id"];
+    for (const key of directKeys) {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed != null) {
+          const id = Number(parsed);
+          if (Number.isFinite(id)) return id;
+        }
+      } catch {
+        // If not JSON, treat as direct string/number
+        const id = Number(raw);
+        if (Number.isFinite(id)) return id;
+      }
+    }
+
+    // 3) Fallback: Try other user object keys
+    const objectKeys = ["currentUser", "auth", "profile", "account", "me"];
+    for (const key of objectKeys) {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      try {
+        const obj = JSON.parse(raw);
+        const candidateId = obj?.id ?? obj?.user?.id ?? obj?.data?.id;
+        if (candidateId != null) {
+          const id = Number(candidateId);
+          if (Number.isFinite(id)) return id;
+        }
+      } catch {
+        // ignore JSON parse errors
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.warn("Error getting user ID from localStorage:", error);
+    return null;
   }
-  // Common object keys
-  const objectKeys = ["user", "auth", "currentUser", "account", "profile", "me"];
-  for (const k of objectKeys) {
-    const obj = tryRead(localStorage.getItem(k));
-    const id =
-      obj?.id ??
-      obj?.user?.id ??
-      obj?.data?.user?.id ??
-      obj?.userId ??
-      obj?.data?.userId;
-    if (id !== undefined && !Number.isNaN(Number(id))) return Number(id);
-  }
-  // Fallback scan
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key) continue;
-    const obj = tryRead(localStorage.getItem(key));
-    if (!obj || typeof obj !== "object") continue;
-    const id =
-      obj?.id ??
-      obj?.user?.id ??
-      obj?.data?.user?.id ??
-      obj?.userId ??
-      obj?.data?.userId;
-    if (id !== undefined && !Number.isNaN(Number(id))) return Number(id);
-  }
-  return undefined;
-}
+};
 
 export async function getPostsByCategory(categoryPath: string, limit: number = 10, offset: number = 0, userId?: number) {
   return axios.get("/api/posts/category", {

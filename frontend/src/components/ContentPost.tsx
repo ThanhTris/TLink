@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { Heart, MessageCircle, Ellipsis, Eye, EyeOff, BookmarkCheck, BookmarkX, X } from "lucide-react";
 import Button from "./Button";
 import CommentSection from "./CommentPostSection";
-import { getTimeAgo } from "../utils/timeAgo";
+import { getTimeAgoStrict, formatDateTimeVN } from "../utils/timeAgo"; // Import the correct time functions
 import { likePost as apiLikePost, unlikePost as apiUnlikePost, getCurrentUserIdFromLocalStorage } from "../api/post";
 import { useDispatch } from "react-redux";
 import CreatePost from "./CreatePost"; // thêm: dùng lại form để chỉnh sửa
@@ -41,7 +41,7 @@ const ContentPost: React.FC<ContentProps> = ({
   created_at,
   parent_tags,
   child_tags,
-  initialComments = [], // thêm
+  initialComments = [],
   images = [],
   files = [],
   author_id,
@@ -69,47 +69,66 @@ const ContentPost: React.FC<ContentProps> = ({
 
   const uid = getCurrentUserIdFromLocalStorage();
 
-  // lấy id/name từ localStorage kể cả khi lưu dưới dạng object JSON
+  // Updated localStorage extraction logic
   const { lsId, lsName } = useMemo(() => {
     let idStr: string | null = null;
     let nameStr: string | null = null;
+
     try {
-      // 1) các key lưu trực tiếp id
-      const directKeys = ["user_id", "currentUserId", "uid", "id"];
-      for (const k of directKeys) {
-        const raw = localStorage.getItem(k);
-        if (!raw) continue;
-        // có thể là "1" hoặc "{"id":1}" tùy hệ thống, thử parse rồi fallback
+      // 1) Try to get user data from "user" key (main login storage)
+      const userRaw = localStorage.getItem("user");
+      if (userRaw) {
         try {
-          const parsed = JSON.parse(raw);
-          if (parsed != null && (typeof parsed === "number" || typeof parsed === "string")) {
-            idStr = String(parsed);
+          const userData = JSON.parse(userRaw);
+          if (userData?.id != null) idStr = String(userData.id);
+          if (userData?.name) nameStr = String(userData.name);
+        } catch {
+          // ignore JSON parse errors
+        }
+      }
+
+      // 2) Fallback: Try other possible direct ID keys
+      if (!idStr) {
+        const directKeys = ["user_id", "currentUserId", "uid", "id"];
+        for (const key of directKeys) {
+          const raw = localStorage.getItem(key);
+          if (!raw) continue;
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed != null && (typeof parsed === "number" || typeof parsed === "string")) {
+              idStr = String(parsed);
+              break;
+            }
+          } catch {
+            // If not JSON, treat as direct string
+            idStr = String(raw);
             break;
           }
-        } catch {
-          idStr = String(raw);
-          break;
         }
       }
-      // 2) các key lưu object user
-      const objectKeys = ["user", "currentUser", "auth", "profile", "account", "me"];
-      for (const k of objectKeys) {
-        if (idStr && nameStr) break;
-        const raw = localStorage.getItem(k);
-        if (!raw) continue;
-        try {
-          const obj = JSON.parse(raw);
-          const candId = obj?.id ?? obj?.user?.id ?? obj?.data?.id;
-          const candName = obj?.name ?? obj?.fullName ?? obj?.user?.name ?? obj?.data?.name;
-          if (!idStr && candId != null) idStr = String(candId);
-          if (!nameStr && candName) nameStr = String(candName);
-        } catch {
-          // bỏ qua nếu không phải JSON
+
+      // 3) Fallback: Try other possible user object keys
+      if (!idStr || !nameStr) {
+        const objectKeys = ["currentUser", "auth", "profile", "account", "me"];
+        for (const key of objectKeys) {
+          if (idStr && nameStr) break;
+          const raw = localStorage.getItem(key);
+          if (!raw) continue;
+          try {
+            const obj = JSON.parse(raw);
+            const candidateId = obj?.id ?? obj?.user?.id ?? obj?.data?.id;
+            const candidateName = obj?.name ?? obj?.fullName ?? obj?.user?.name ?? obj?.data?.name;
+            if (!idStr && candidateId != null) idStr = String(candidateId);
+            if (!nameStr && candidateName) nameStr = String(candidateName);
+          } catch {
+            // ignore JSON parse errors
+          }
         }
       }
-    } catch {
-      // ignore
+    } catch (error) {
+      console.warn("Error reading from localStorage:", error);
     }
+
     return { lsId: idStr, lsName: nameStr };
   }, []);
 
@@ -123,7 +142,9 @@ const ContentPost: React.FC<ContentProps> = ({
     return false;
   }, [author_id, uid, lsId, lsName, name]);
 
-  const timeAgo = getTimeAgo(created_at);
+  // Use the new Vietnamese time functions
+  const timeAgoDisplay = getTimeAgoStrict(created_at);
+  const timeTooltip = formatDateTimeVN(created_at);
 
   const handleLike = async () => {
     const newLiked = !liked;
@@ -276,7 +297,10 @@ const ContentPost: React.FC<ContentProps> = ({
 
       <div className="flex items-center flex-wrap gap-2 mb-2 text-sm text-gray-500">
         <span>Đăng bởi {name}</span>
-        <span>• {timeAgo}</span>
+        <span>• </span>
+        <span title={timeTooltip} className="cursor-help hover:text-gray-700">
+          {timeAgoDisplay}
+        </span>
         {displayParentTags.map((tag, idx) => (
           <span key={`parent-tag-${idx}`} className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded-full">
             #{tag}
