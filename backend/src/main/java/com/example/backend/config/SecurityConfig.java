@@ -39,7 +39,7 @@ public class SecurityConfig {
                                 "/api/auth/register/verify-otp",
                                 "/api/posts",
                                 "/api/posts/category",
-                                "/api/posts/search", 
+                                "/api/posts/search",
                                 "/api/posts/**",
                                 "/api/users/*",
                                 "/api/users/*/password",
@@ -47,7 +47,8 @@ public class SecurityConfig {
                                 "/api/comments",
                                 "/api/comments/tree",
                                 "/api/comments/*/like",
-                                "/api/comments/*/unlike"
+                                "/api/comments/*/unlike",
+                                "/api/posts/{id}/comment-count"
                         ).permitAll()
                         // Các endpoint khác phải xác thực
                         .anyRequest().authenticated())

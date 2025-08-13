@@ -130,11 +130,10 @@ public class PostService {
             String sql;
 
             if ("/popular".equals(categoryPath)) {
-                // Lấy bài viết theo lượt thích và comment giảm dần
                 sql = "SELECT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                        "u.name AS user_name, u.avatar AS user_avatar, p.user_id " +
+                        "u.name AS user_name, p.author_id " +
                         "FROM posts p " +
-                        "JOIN users u ON p.user_id = u.id " +
+                        "JOIN users u ON p.author_id = u.id " +
                         "ORDER BY p.likes_count DESC, p.comment_count DESC, p.created_at DESC " +
                         "LIMIT :limit OFFSET :offset";
                 results = entityManager.createNativeQuery(sql)
@@ -151,9 +150,9 @@ public class PostService {
                     return new ApiResponseDTO(false, "User không tồn tại", null, "USER_NOT_FOUND");
                 }
                 sql = "SELECT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                        "u.name AS user_name, u.avatar AS user_avatar, p.user_id " +
+                        "u.name AS user_name, p.author_id " +
                         "FROM posts p " +
-                        "JOIN users u ON p.user_id = u.id " +
+                        "JOIN users u ON p.author_id = u.id " +
                         "JOIN post_saves ps ON p.id = ps.post_id " +
                         "WHERE ps.user_id = :userId " +
                         "ORDER BY ps.created_at DESC " +
@@ -166,9 +165,9 @@ public class PostService {
             } else if ("/".equals(categoryPath) || "/home".equals(categoryPath)) {
                 // Lấy các bài viết mới nhất
                 sql = "SELECT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                        "u.name AS user_name, u.avatar AS user_avatar, p.user_id " +
+                        "u.name AS user_name, p.author_id " +
                         "FROM posts p " +
-                        "JOIN users u ON p.user_id = u.id " +
+                        "JOIN users u ON p.author_id = u.id " +
                         "ORDER BY p.created_at DESC " +
                         "LIMIT :limit OFFSET :offset";
                 results = entityManager.createNativeQuery(sql)
@@ -179,9 +178,9 @@ public class PostService {
                 List<String> childTagNames = getChildTagsForParentCategory(categoryPath);
                 if (!childTagNames.isEmpty()) {
                     sql = "SELECT DISTINCT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                            "u.name AS user_name, u.avatar AS user_avatar, p.user_id " +
+                            "u.name AS user_name, p.author_id " +
                             "FROM posts p " +
-                            "JOIN users u ON p.user_id = u.id " +
+                            "JOIN users u ON p.author_id = u.id " +
                             "LEFT JOIN post_child_tags pct ON p.id = pct.post_id " +
                             "LEFT JOIN child_tags ct ON pct.child_tag_id = ct.id " +
                             "WHERE ct.name IN (:tagNames) " +
@@ -195,9 +194,9 @@ public class PostService {
                 } else {
                     String tagName = mapCategoryPathToTagName(categoryPath);
                     sql = "SELECT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                            "u.name AS user_name, u.avatar AS user_avatar, p.user_id " +
+                            "u.name AS user_name, p.author_id " +
                             "FROM posts p " +
-                            "JOIN users u ON p.user_id = u.id " +
+                            "JOIN users u ON p.author_id = u.id " +
                             "LEFT JOIN post_child_tags pct ON p.id = pct.post_id " +
                             "LEFT JOIN child_tags ct ON pct.child_tag_id = ct.id " +
                             "LEFT JOIN parent_tags pt ON ct.parent_tag_id = pt.id " +
@@ -310,54 +309,61 @@ public class PostService {
             post.put("comment_count", row[4]);
             post.put("created_at", row[5]);
             post.put("user_name", row[6]);
-            post.put("user_avatar", row[7]);
-            post.put("author_id", row[8]);
-            
-            // Lấy parent tags - chỉ lấy tên và nối thành chuỗi
+            post.put("author_id", row[7]);
+
+            // Lấy parent tags - trả về mảng tên
             String parentTagSql = "SELECT pt.name FROM parent_tags pt " +
                     "JOIN post_parent_tags ppt ON pt.id = ppt.parent_tag_id " +
                     "WHERE ppt.post_id = :postId";
             List<String> parentTagNames = entityManager.createNativeQuery(parentTagSql)
                     .setParameter("postId", postId)
                     .getResultList();
-            
-            // Nối danh sách parent tag names thành một chuỗi ngăn cách bằng dấu phẩy
-            String parentTagsStr = String.join(", ", parentTagNames);
-            post.put("parent_tags", parentTagsStr);
-            
-            // Lấy child tags - chỉ lấy tên và nối thành chuỗi
+            post.put("parent_tags", parentTagNames);
+
+            // Lấy child tags - trả về mảng tên
             String childTagSql = "SELECT ct.name FROM child_tags ct " +
                     "JOIN post_child_tags pct ON ct.id = pct.child_tag_id " +
                     "WHERE pct.post_id = :postId";
             List<String> childTagNames = entityManager.createNativeQuery(childTagSql)
                     .setParameter("postId", postId)
                     .getResultList();
-            
-            // Nối danh sách child tag names thành một chuỗi ngăn cách bằng dấu phẩy
-            String childTagsStr = String.join(", ", childTagNames);
-            post.put("child_tags", childTagsStr);
-            
-            // Lấy image - chỉ lấy URL
-            String imageSql = "SELECT image_url FROM posts_image WHERE post_id = :postId";
-            List<String> imageResults = entityManager.createNativeQuery(imageSql)
+            post.put("child_tags", childTagNames);
+
+            // Lấy image - trả về object { url, caption }
+            String imageSql = "SELECT image_url, caption FROM posts_image WHERE post_id = :postId ORDER BY id ASC LIMIT 1";
+            List<Object[]> imageResults = entityManager.createNativeQuery(imageSql)
                     .setParameter("postId", postId)
                     .getResultList();
-            
-            post.put("image", imageResults.isEmpty() ? null : imageResults.get(0));
-            
-            // Lấy file - chỉ lấy URL
-            String fileSql = "SELECT file_url FROM posts_file WHERE post_id = :postId";
-            List<String> fileResults = entityManager.createNativeQuery(fileSql)
+            if (!imageResults.isEmpty()) {
+                Object[] img = imageResults.get(0);
+                Map<String, Object> imageObj = new HashMap<>();
+                imageObj.put("url", img[0]);
+                imageObj.put("caption", img[1]);
+                post.put("image", imageObj);
+            } else {
+                post.put("image", null);
+            }
+
+            // Lấy file - trả về object { url, name }
+            String fileSql = "SELECT file_url, file_name FROM posts_file WHERE post_id = :postId ORDER BY id ASC LIMIT 1";
+            List<Object[]> fileResults = entityManager.createNativeQuery(fileSql)
                     .setParameter("postId", postId)
                     .getResultList();
-            
-            post.put("file", fileResults.isEmpty() ? null : fileResults.get(0));
-            
+            if (!fileResults.isEmpty()) {
+                Object[] file = fileResults.get(0);
+                Map<String, Object> fileObj = new HashMap<>();
+                fileObj.put("url", file[0]);
+                fileObj.put("name", file[1]);
+                post.put("file", fileObj);
+            } else {
+                post.put("file", null);
+            }
+
             formattedResults.add(post);
         }
         return formattedResults;
     }
-    
+
     // Trả về danh sách tên các tag con cho category cha (dùng path FE)
     private List<String> getChildTagsForParentCategory(String categoryPath) {
         switch (categoryPath) {
@@ -449,5 +455,5 @@ public class PostService {
         }
     }
 }
-        
+
 
