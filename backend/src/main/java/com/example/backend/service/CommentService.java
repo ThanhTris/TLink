@@ -13,7 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.UnexpectedRollbackException;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class CommentService {
@@ -132,7 +135,8 @@ public class CommentService {
             query.registerStoredProcedureParameter("p_post_id", Long.class, jakarta.persistence.ParameterMode.IN);
             query.setParameter("p_post_id", postId);
             List<Object[]> results = query.getResultList();
-            return new ApiResponseDTO(true, "Lấy danh sách bình luận thành công", results, null);
+            List<Map<String, Object>> formattedResults = convertCommentsToKeyValue(results);
+            return new ApiResponseDTO(true, "Lấy danh sách bình luận thành công", formattedResults, null);
         } catch (Exception ex) {
             String message = ex.getMessage();
             if (message != null && message.contains("SQLSTATE[45000]")) {
@@ -147,6 +151,26 @@ public class CommentService {
             }
             return new ApiResponseDTO(false, message, null, "GET_COMMENTS_ERROR");
         }
+    }
+
+    private List<Map<String, Object>> convertCommentsToKeyValue(List<Object[]> results) {
+        List<Map<String, Object>> formattedResults = new ArrayList<>();
+        for (Object[] row : results) {
+            Map<String, Object> comment = new HashMap<>();
+            comment.put("id", row[0]);
+            comment.put("post_id", row[1]);
+            comment.put("user_id", row[2]);
+            comment.put("parent_id", row[3]);
+            comment.put("content", row[4]);
+            comment.put("likes_count", row[5]);
+            comment.put("created_at", row[6]);
+            comment.put("updated_at", row[7]);
+            comment.put("user_name", row[8]);
+            comment.put("user_avatar", row[9]);
+            comment.put("level", row[10]);
+            formattedResults.add(comment);
+        }
+        return formattedResults;
     }
 
     private String extractRootCauseMessage(Throwable ex) {

@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -93,11 +94,29 @@ public class UserService {
             query.setParameter("p_offset", offset);
 
             List<Object[]> results = query.getResultList();
-            return new ApiResponseDTO(true, "Lấy bài viết của user thành công", results, null);
+            List<Map<String, Object>> formattedResults = convertUserPostsToKeyValue(results);
+            return new ApiResponseDTO(true, "Lấy bài viết của user thành công", formattedResults, null);
         } catch (Exception ex) {
             return new ApiResponseDTO(false, "Lỗi khi lấy bài viết của user: " + ex.getMessage(), null,
                     "GET_USER_POSTS_ERROR");
         }
+    }
+
+    private List<Map<String, Object>> convertUserPostsToKeyValue(List<Object[]> results) {
+        List<Map<String, Object>> formattedResults = new ArrayList<>();
+        for (Object[] row : results) {
+            Map<String, Object> post = new HashMap<>();
+            post.put("id", row[0]);
+            post.put("title", row[1]);
+            post.put("content", row[2]);
+            post.put("likes_count", row[3]);
+            post.put("comment_count", row[4]);
+            post.put("created_at", row[5]);
+            post.put("user_name", row[6]);
+            post.put("user_avatar", row[7]);
+            formattedResults.add(post);
+        }
+        return formattedResults;
     }
 
     // Hàm duy nhất cập nhật thông tin user, xác thực bằng mật khẩu hiện tại
@@ -166,4 +185,3 @@ public class UserService {
         }
     }
 }
-       

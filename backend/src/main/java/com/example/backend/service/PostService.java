@@ -12,7 +12,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.UnexpectedRollbackException;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class PostService {
@@ -209,7 +212,8 @@ public class PostService {
                 }
             }
 
-            return new ApiResponseDTO(true, "Lấy bài viết theo category thành công", results, null);
+            List<Map<String, Object>> formattedResults = convertPostsToKeyValue(results);
+            return new ApiResponseDTO(true, "Lấy bài viết theo category thành công", formattedResults, null);
         } catch (Exception ex) {
             return new ApiResponseDTO(false, "Lỗi khi lấy bài viết theo category: " + ex.getMessage(), null, "GET_POSTS_BY_CATEGORY_ERROR");
         }
@@ -265,7 +269,7 @@ public class PostService {
         }
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public ApiResponseDTO searchPosts(String keyword, Integer limit, Integer offset) {
         try {
             // Tìm kiếm theo title, content, child tag, parent tag (chỉ cần 1 trường khớp là trả về)
@@ -287,10 +291,28 @@ public class PostService {
                     .setParameter("limit", limit)
                     .setParameter("offset", offset)
                     .getResultList();
-            return new ApiResponseDTO(true, "Tìm kiếm bài viết thành công", results, null);
+            List<Map<String, Object>> formattedResults = convertPostsToKeyValue(results);
+            return new ApiResponseDTO(true, "Tìm kiếm bài viết thành công", formattedResults, null);
         } catch (Exception ex) {
             return new ApiResponseDTO(false, "Lỗi khi tìm kiếm bài viết: " + ex.getMessage(), null, "SEARCH_POST_ERROR");
         }
+    }
+
+    private List<Map<String, Object>> convertPostsToKeyValue(List<Object[]> results) {
+        List<Map<String, Object>> formattedResults = new ArrayList<>();
+        for (Object[] row : results) {
+            Map<String, Object> post = new HashMap<>();
+            post.put("id", row[0]);
+            post.put("title", row[1]);
+            post.put("content", row[2]);
+            post.put("likes_count", row[3]);
+            post.put("comment_count", row[4]);
+            post.put("created_at", row[5]);
+            post.put("user_name", row[6]);
+            post.put("user_avatar", row[7]);
+            formattedResults.add(post);
+        }
+        return formattedResults;
     }
 
     // Trả về danh sách tên các tag con cho category cha (dùng path FE)
