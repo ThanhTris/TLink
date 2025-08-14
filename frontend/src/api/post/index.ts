@@ -45,7 +45,6 @@ export async function createPost(data: {
   content: string;
   authorId: number;
   tagParent: string;
-  tagChild?: string;
   childTags?: string[];
 }) {
   return axios.post("/api/posts", {

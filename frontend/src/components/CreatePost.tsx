@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import Button from "./Button";
 import Select from "react-select";
 import CreatableSelect from "react-select/creatable";
+import {getCurrentUserIdFromLocalStorage } from "../api/post";
+
 import {
   Bold,
   Italic,
@@ -13,6 +15,7 @@ import {
   Smile,
   X,
 } from "lucide-react";
+import { createPost, uploadPostImage, uploadPostFile } from "../api/post";
 
 const tagOptions = [
   {
@@ -54,7 +57,7 @@ interface CreatePostProps {
   onSubmit?: (data: {
     title: string;
     content: string;
-    user_id: number;
+    authorId: number;
     tagParent: string;
     tagChild?: string;
     childTags?: string[];
@@ -113,7 +116,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
 
   const [imagePreviewsStateVersion] = useState(0); // giữ place-holder cho deps cleanup
 
-  const user_id = 1;
+  const authorIdRaw = getCurrentUserIdFromLocalStorage();
+  const authorId = typeof authorIdRaw === "number" && Number.isFinite(authorIdRaw) ? authorIdRaw : 0; // fallback 0 nếu null
 
   const parentOptions = tagOptions.map((tag) => ({
     value: tag.parent,
@@ -214,20 +218,51 @@ const CreatePost: React.FC<CreatePostProps> = ({
     addFiles(files);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const keptExistingImageUrls = imagePreviews.filter((_, i) => imageOrigins[i] === "existing");
-    onSubmit?.({
-      title,
-      content,
-      user_id,
-      tagParent,
-      tagChild: childTags[0]?.trim() ? childTags[0].trim() : undefined,
-      childTags: childTags.map((t) => t.trim()).filter(Boolean),
-      imageFiles,
-      docFiles,
-      existingImageUrls: keptExistingImageUrls,
-      existingDocUrls: existingDocUrls,
-    });
+    try {
+      // 1. Tạo bài viết trước
+      const payload: any = {
+        title,
+        content,
+        authorId,
+        tagParent,
+      };
+      const trimmedChildTags = childTags.map((t) => t.trim()).filter(Boolean);
+      if (trimmedChildTags.length > 0) {
+        payload.childTags = trimmedChildTags;
+      }
+      const res = await createPost(payload);
+      // Safely extract postId from Axios response
+      const postId = (res as any)?.data?.data;
+      if (!postId) throw new Error("Không lấy được postId");
+
+      // 2. Upload ảnh mới (nếu có)
+      for (const file of imageFiles) {
+        await uploadPostImage(postId, file);
+      }
+
+      // 3. Upload file tài liệu mới (nếu có)
+      for (const file of docFiles) {
+        await uploadPostFile(postId, file);
+      }
+
+      // 4. Gọi callback khi xong
+      onSubmit?.({
+        title,
+        content,
+        authorId, 
+        tagParent,
+        tagChild: trimmedChildTags[0],
+        childTags: trimmedChildTags,
+        imageFiles: [],
+        docFiles: [],
+        existingImageUrls: keptExistingImageUrls,
+        existingDocUrls: existingDocUrls,
+      });
+    } catch (err) {
+      alert("Tạo bài viết thất bại: " + (err as any)?.message);
+    }
   };
 
   const canSubmit = title.trim().length > 0 && content.trim().length > 0;
@@ -495,3 +530,4 @@ const CreatePost: React.FC<CreatePostProps> = ({
 };
 
 export default CreatePost;
+
