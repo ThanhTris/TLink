@@ -11,11 +11,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.UnexpectedRollbackException;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import com.example.backend.dto.response.PostImageDTO;
+import com.example.backend.dto.response.PostFileDTO;
 
 @Service
 public class PostService {
@@ -26,42 +30,62 @@ public class PostService {
     @Autowired
     private PostRepository postRepository;
 
+    // Tạo bài viết mới sử dụng stored procedure mới
     @Transactional
     public ApiResponseDTO createPost(PostCreateRequestDTO request) {
         try {
-            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_create_post");
-            query.registerStoredProcedureParameter("p_user_id", Long.class, jakarta.persistence.ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_title", String.class, jakarta.persistence.ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_content", String.class, jakarta.persistence.ParameterMode.IN);
-
-            query.setParameter("p_user_id", request.getUserId());
-            query.setParameter("p_title", request.getTitle());
-            query.setParameter("p_content", request.getContent());
-
-            query.execute();
-            Object resultObj = query.getSingleResult();
-            Long postId = null;
-            if (resultObj instanceof Number) {
-                postId = ((Number) resultObj).longValue();
-            } else if (resultObj instanceof Object[]) {
-                postId = ((Number) ((Object[]) resultObj)[0]).longValue();
+            // Map parentTag name to id
+            Long parentTagId = null;
+            if (request.getParentTag() != null && !request.getParentTag().isEmpty()) {
+                List<?> ids = entityManager.createNativeQuery("SELECT id FROM parent_tags WHERE name = :name")
+                        .setParameter("name", request.getParentTag())
+                        .getResultList();
+                if (!ids.isEmpty()) {
+                    parentTagId = ((Number) ids.get(0)).longValue();
+                }
+            }
+            // Map childTags name list to CSV id string
+            String childTagIdsCsv = "";
+            if (request.getChildTags() != null && !request.getChildTags().isEmpty()) {
+                List<?> ids = entityManager.createNativeQuery("SELECT id FROM child_tags WHERE name IN (:names)")
+                        .setParameter("names", request.getChildTags())
+                        .getResultList();
+                StringBuilder sb = new StringBuilder();
+                for (Object id : ids) {
+                    if (sb.length() > 0) sb.append(",");
+                    sb.append(id.toString());
+                }
+                childTagIdsCsv = sb.toString();
             }
 
-            // Gắn tag cho bài viết
-            if (request.getChildTagIds() != null) {
-                for (Long childTagId : request.getChildTagIds()) {
-                    StoredProcedureQuery tagQuery = entityManager.createStoredProcedureQuery("sp_add_tag_to_post");
-                    tagQuery.registerStoredProcedureParameter("p_post_id", Long.class, jakarta.persistence.ParameterMode.IN);
-                    tagQuery.registerStoredProcedureParameter("p_child_tag_id", Long.class, jakarta.persistence.ParameterMode.IN);
-                    tagQuery.setParameter("p_post_id", postId);
-                    tagQuery.setParameter("p_child_tag_id", childTagId);
-                    tagQuery.execute();
-                }
+            // Gọi stored procedure
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_create_post");
+            query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN); // p_author_id
+            query.registerStoredProcedureParameter(2, String.class, jakarta.persistence.ParameterMode.IN); // p_title
+            query.registerStoredProcedureParameter(3, String.class, jakarta.persistence.ParameterMode.IN); // p_content
+            query.registerStoredProcedureParameter(4, Long.class, jakarta.persistence.ParameterMode.IN); // p_parent_tag_id
+            query.registerStoredProcedureParameter(5, String.class, jakarta.persistence.ParameterMode.IN); // p_child_tag_ids
+
+            query.setParameter(1, request.getAuthorId());
+            query.setParameter(2, request.getTitle());
+            query.setParameter(3, request.getContent());
+            query.setParameter(4, parentTagId);
+            query.setParameter(5, childTagIdsCsv);
+
+            Object result = query.getSingleResult();
+            Long postId;
+            if (result instanceof Object[]) {
+                postId = ((Number)((Object[])result)[0]).longValue();
+            } else if (result instanceof Number) {
+                postId = ((Number)result).longValue();
+            } else {
+                postId = null;
             }
 
             return new ApiResponseDTO(true, "Tạo bài viết thành công", postId, null);
         } catch (Exception ex) {
-            return new ApiResponseDTO(false, "Lỗi khi tạo bài viết: " + ex.getMessage(), null, "CREATE_POST_ERROR");
+            String message = extractRootCauseMessage(ex);
+            return new ApiResponseDTO(false, "Lỗi khi tạo bài viết: " + message, null, "CREATE_POST_ERROR");
         }
     }
 
@@ -72,36 +96,50 @@ public class PostService {
             if (!postRepository.existsById(postId)) {
                 return new ApiResponseDTO(false, "Bài viết không tồn tại", null, "POST_NOT_FOUND");
             }
-            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_update_post");
-            query.registerStoredProcedureParameter("p_post_id", Long.class, jakarta.persistence.ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_title", String.class, jakarta.persistence.ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_content", String.class, jakarta.persistence.ParameterMode.IN);
-
-            query.setParameter("p_post_id", postId);
-            query.setParameter("p_title", request.getTitle());
-            query.setParameter("p_content", request.getContent());
-            query.execute();
-
-            // Xóa hết tag cũ và gắn lại tag mới (nếu cần)
-            if (request.getChildTagIds() != null) {
-                // Xóa tag cũ
-                entityManager.createNativeQuery("DELETE FROM post_child_tags WHERE post_id = ?")
-                        .setParameter(1, postId)
-                        .executeUpdate();
-                // Gắn lại tag mới
-                for (Long childTagId : request.getChildTagIds()) {
-                    StoredProcedureQuery tagQuery = entityManager.createStoredProcedureQuery("sp_add_tag_to_post");
-                    tagQuery.registerStoredProcedureParameter("p_post_id", Long.class, jakarta.persistence.ParameterMode.IN);
-                    tagQuery.registerStoredProcedureParameter("p_child_tag_id", Long.class, jakarta.persistence.ParameterMode.IN);
-                    tagQuery.setParameter("p_post_id", postId);
-                    tagQuery.setParameter("p_child_tag_id", childTagId);
-                    tagQuery.execute();
+            // Map parentTag name to id
+            Long parentTagId = null;
+            if (request.getParentTag() != null && !request.getParentTag().isEmpty()) {
+                List<?> ids = entityManager.createNativeQuery("SELECT id FROM parent_tags WHERE name = :name")
+                        .setParameter("name", request.getParentTag())
+                        .getResultList();
+                if (!ids.isEmpty()) {
+                    parentTagId = ((Number) ids.get(0)).longValue();
                 }
             }
+            // Map childTags name list to CSV id string
+            String childTagIdsCsv = "";
+            if (request.getChildTags() != null && !request.getChildTags().isEmpty()) {
+                List<?> ids = entityManager.createNativeQuery("SELECT id FROM child_tags WHERE name IN (:names)")
+                        .setParameter("names", request.getChildTags())
+                        .getResultList();
+                StringBuilder sb = new StringBuilder();
+                for (Object id : ids) {
+                    if (sb.length() > 0) sb.append(",");
+                    sb.append(id.toString());
+                }
+                childTagIdsCsv = sb.toString();
+            }
+
+            // Sử dụng stored procedure mới
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_update_post");
+            query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN); // p_post_id
+            query.registerStoredProcedureParameter(2, String.class, jakarta.persistence.ParameterMode.IN); // p_title
+            query.registerStoredProcedureParameter(3, String.class, jakarta.persistence.ParameterMode.IN); // p_content
+            query.registerStoredProcedureParameter(4, Long.class, jakarta.persistence.ParameterMode.IN); // p_parent_tag_id
+            query.registerStoredProcedureParameter(5, String.class, jakarta.persistence.ParameterMode.IN); // p_child_tag_ids
+
+            query.setParameter(1, postId);
+            query.setParameter(2, request.getTitle());
+            query.setParameter(3, request.getContent());
+            query.setParameter(4, parentTagId);
+            query.setParameter(5, childTagIdsCsv);
+
+            query.execute();
 
             return new ApiResponseDTO(true, "Cập nhật bài viết thành công", postId, null);
         } catch (Exception ex) {
-            return new ApiResponseDTO(false, "Lỗi khi cập nhật bài viết: " + ex.getMessage(), null, "UPDATE_POST_ERROR");
+            String message = extractRootCauseMessage(ex);
+            return new ApiResponseDTO(false, "Lỗi khi cập nhật bài viết: " + message, null, "UPDATE_POST_ERROR");
         }
     }
 
@@ -112,9 +150,10 @@ public class PostService {
             if (!postRepository.existsById(postId)) {
                 return new ApiResponseDTO(false, "Bài viết không tồn tại", null, "POST_NOT_FOUND");
             }
+            // Sử dụng stored procedure mới
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_delete_post");
-            query.registerStoredProcedureParameter("p_post_id", Long.class, jakarta.persistence.ParameterMode.IN);
-            query.setParameter("p_post_id", postId);
+            query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN); // p_post_id
+            query.setParameter(1, postId);
             query.execute();
 
             return new ApiResponseDTO(true, "Xóa bài viết thành công", postId, null);
@@ -221,20 +260,19 @@ public class PostService {
     @Transactional
     public ApiResponseDTO likePost(Long postId, Long userId) {
         try {
+            // Sử dụng stored procedure mới
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_like_post");
-            query.registerStoredProcedureParameter("p_post_id", Long.class, jakarta.persistence.ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_user_id", Long.class, jakarta.persistence.ParameterMode.IN);
-            query.setParameter("p_post_id", postId);
-            query.setParameter("p_user_id", userId);
+            query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN); // p_post_id
+            query.registerStoredProcedureParameter(2, Long.class, jakarta.persistence.ParameterMode.IN); // p_liker_id
+            query.setParameter(1, postId);
+            query.setParameter(2, userId);
             query.execute();
             return new ApiResponseDTO(true, "Like bài viết thành công", null, null);
         } catch (UnexpectedRollbackException urex) {
-            // Extract root cause message from the exception chain
             String message = extractRootCauseMessage(urex);
             return new ApiResponseDTO(false, message, null, "LIKE_POST_ERROR");
         } catch (Exception ex) {
             String message = ex.getMessage();
-            // Nếu message chứa lỗi nghiệp vụ từ SIGNAL SQLSTATE thì lấy message đó
             if (message != null && message.contains("SQLSTATE[45000]")) {
                 int idx = message.indexOf("MESSAGE_TEXT = '");
                 if (idx != -1) {
@@ -252,11 +290,12 @@ public class PostService {
     @Transactional
     public ApiResponseDTO unlikePost(Long postId, Long userId) {
         try {
+            // Sử dụng stored procedure mới
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_unlike_post");
-            query.registerStoredProcedureParameter("p_post_id", Long.class, jakarta.persistence.ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_user_id", Long.class, jakarta.persistence.ParameterMode.IN);
-            query.setParameter("p_post_id", postId);
-            query.setParameter("p_user_id", userId);
+            query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN); // p_post_id
+            query.registerStoredProcedureParameter(2, Long.class, jakarta.persistence.ParameterMode.IN); // p_liker_id
+            query.setParameter(1, postId);
+            query.setParameter(2, userId);
             query.execute();
             return new ApiResponseDTO(true, "Unlike bài viết thành công", null, null);
         } catch (UnexpectedRollbackException urex) {
@@ -329,31 +368,36 @@ public class PostService {
                     .getResultList();
             post.put("child_tags", childTagNames);
 
-            // Lấy image - trả về object { url, caption }
-            String imageSql = "SELECT image_url, caption FROM posts_image WHERE post_id = :postId ORDER BY id ASC LIMIT 1";
+            // Lấy image - trả về object { id, name, type, size, caption }
+            String imageSql = "SELECT id, image_name, image_type, image_size, caption FROM posts_image WHERE post_id = :postId ORDER BY id ASC LIMIT 1";
             List<Object[]> imageResults = entityManager.createNativeQuery(imageSql)
                     .setParameter("postId", postId)
                     .getResultList();
             if (!imageResults.isEmpty()) {
                 Object[] img = imageResults.get(0);
                 Map<String, Object> imageObj = new HashMap<>();
-                imageObj.put("url", img[0]);
-                imageObj.put("caption", img[1]);
+                imageObj.put("id", img[0]);
+                imageObj.put("name", img[1]);
+                imageObj.put("type", img[2]);
+                imageObj.put("size", img[3]);
+                imageObj.put("caption", img[4]);
                 post.put("image", imageObj);
             } else {
                 post.put("image", null);
             }
 
-            // Lấy file - trả về object { url, name }
-            String fileSql = "SELECT file_url, file_name FROM posts_file WHERE post_id = :postId ORDER BY id ASC LIMIT 1";
+            // Lấy file - trả về object { id, name, type, size }
+            String fileSql = "SELECT id, file_name, file_type, file_size FROM posts_file WHERE post_id = :postId ORDER BY id ASC LIMIT 1";
             List<Object[]> fileResults = entityManager.createNativeQuery(fileSql)
                     .setParameter("postId", postId)
                     .getResultList();
             if (!fileResults.isEmpty()) {
                 Object[] file = fileResults.get(0);
                 Map<String, Object> fileObj = new HashMap<>();
-                fileObj.put("url", file[0]);
+                fileObj.put("id", file[0]);
                 fileObj.put("name", file[1]);
+                fileObj.put("type", file[2]);
+                fileObj.put("size", file[3]);
                 post.put("file", fileObj);
             } else {
                 post.put("file", null);
@@ -454,6 +498,105 @@ public class PostService {
             return new ApiResponseDTO(false, "Lỗi khi lấy số lượng bình luận: " + ex.getMessage(), null, "GET_COMMENT_COUNT_ERROR");
         }
     }
+
+    // Thêm phương thức upload ảnh cho post
+    @Transactional
+    public ApiResponseDTO savePostImage(Long postId, MultipartFile file, String caption) {
+        try {
+            if (!postRepository.existsById(postId)) {
+                return new ApiResponseDTO(false, "Bài viết không tồn tại", null, "POST_NOT_FOUND");
+            }
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_save_post_image");
+            query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(2, byte[].class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(3, String.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(4, String.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(5, Long.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(6, String.class, jakarta.persistence.ParameterMode.IN);
+
+            query.setParameter(1, postId);
+            query.setParameter(2, file.getBytes());
+            query.setParameter(3, file.getOriginalFilename());
+            query.setParameter(4, file.getContentType());
+            query.setParameter(5, file.getSize());
+            query.setParameter(6, caption);
+
+            query.execute();
+            return new ApiResponseDTO(true, "Upload ảnh thành công", null, null);
+        } catch (Exception ex) {
+            return new ApiResponseDTO(false, "Lỗi khi upload ảnh: " + ex.getMessage(), null, "UPLOAD_IMAGE_ERROR");
+        }
+    }
+
+    // Thêm phương thức lấy ảnh theo id
+    @Transactional(readOnly = true)
+    public Optional<PostImageDTO> getPostImageById(Long imageId) {
+        try {
+            String sql = "SELECT image_data, image_type, image_name, image_size FROM posts_image WHERE id = ?";
+            Object[] row = (Object[]) entityManager.createNativeQuery(sql)
+                .setParameter(1, imageId)
+                .getSingleResult();
+            if (row == null) return Optional.empty();
+            PostImageDTO dto = new PostImageDTO(
+                (byte[]) row[0],
+                (String) row[1],
+                (String) row[2],
+                ((Number) row[3]).longValue()
+            );
+            return Optional.of(dto);
+        } catch (Exception ex) {
+            return Optional.empty();
+        }
+    }
+
+    // Thêm phương thức upload file cho post
+    @Transactional
+    public ApiResponseDTO savePostFile(Long postId, MultipartFile file) {
+        try {
+            if (!postRepository.existsById(postId)) {
+                return new ApiResponseDTO(false, "Bài viết không tồn tại", null, "POST_NOT_FOUND");
+            }
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_save_post_file");
+            query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(2, byte[].class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(3, String.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(4, String.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(5, Long.class, jakarta.persistence.ParameterMode.IN);
+
+            query.setParameter(1, postId);
+            query.setParameter(2, file.getBytes());
+            query.setParameter(3, file.getOriginalFilename());
+            query.setParameter(4, file.getContentType());
+            query.setParameter(5, file.getSize());
+
+            query.execute();
+            return new ApiResponseDTO(true, "Upload file thành công", null, null);
+        } catch (Exception ex) {
+            return new ApiResponseDTO(false, "Lỗi khi upload file: " + ex.getMessage(), null, "UPLOAD_FILE_ERROR");
+        }
+    }
+
+    // Thêm phương thức lấy file theo id
+    @Transactional(readOnly = true)
+    public Optional<PostFileDTO> getPostFileById(Long fileId) {
+        try {
+            String sql = "SELECT file_data, file_type, file_name, file_size FROM posts_file WHERE id = ?";
+            Object[] row = (Object[]) entityManager.createNativeQuery(sql)
+                .setParameter(1, fileId)
+                .getSingleResult();
+            if (row == null) return Optional.empty();
+            PostFileDTO dto = new PostFileDTO(
+                (byte[]) row[0],
+                (String) row[1],
+                (String) row[2],
+                ((Number) row[3]).longValue()
+            );
+            return Optional.of(dto);
+        } catch (Exception ex) {
+            return Optional.empty();
+        }
+    }
+
 }
 
 

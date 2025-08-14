@@ -37,10 +37,10 @@ public class SecurityConfig {
                                 "/api/auth/login/reset-password",
                                 "/api/auth/register",
                                 "/api/auth/register/verify-otp",
-                                "/api/posts",
+                                "/api/posts",           // <-- dòng này chỉ match GET, nên thêm dòng dưới
+                                "/api/posts/**",        // <-- thêm dòng này để match mọi method cho /api/posts
                                 "/api/posts/category",
                                 "/api/posts/search",
-                                "/api/posts/**",
                                 "/api/users/*",
                                 "/api/users/*/password",
                                 "/api/users/*/posts",

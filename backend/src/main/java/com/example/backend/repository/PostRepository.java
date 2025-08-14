@@ -6,4 +6,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface PostRepository extends JpaRepository<Post, Long> {
+    // Nếu có method như findByUser thì đổi thành findByAuthor
+    // Ví dụ:
+    // List<Post> findByAuthor(User author);
 }

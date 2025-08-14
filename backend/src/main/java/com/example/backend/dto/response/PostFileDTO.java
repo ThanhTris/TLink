@@ -1,4 +1,4 @@
-// Đây là DTO dùng cho Response (trả về dữ liệu file cho client)
+
 package com.example.backend.dto.response;
 
 import java.io.Serializable;
