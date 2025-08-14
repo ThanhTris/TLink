@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "comment_likes",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"comment_id", "user_id"}))
+       uniqueConstraints = @UniqueConstraint(columnNames = {"comment_id", "liker_id"}))
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -22,8 +22,8 @@ public class CommentLike {
     private Comment comment;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "liker_id", nullable = false)
+    private User liker;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
