@@ -1,23 +1,29 @@
 import React, { useEffect, useState } from "react";
 import ContentHeader from "../components/ContentHeader";
 import CreatePost from "../components/CreatePost";
-import Content from "../components/ContentPost";
-import { getPostsByCategory, getCurrentUserIdFromLocalStorage } from "../api/post";
-import { parseMySQLDateVN } from "../utils/timeAgo"; // Import the correct date parsing function
+import ContentPost from "../components/ContentPost";
+import {
+  getPostsByCategory,
+  getCurrentUserIdFromLocalStorage,
+} from "../api/post";
+import { parseMySQLDateVN } from "../utils/timeAgo";
 
 type FEPost = {
   id: number;
-  name: string;
   title: string;
   content: string;
-  like_count: number;
-  comment_count: number;
-  is_saved: boolean;
-  is_like: boolean;
+  likes_count?: number;
+  comment_count?: number;
+  is_saved?: boolean;
+  is_like?: boolean;
   created_at: Date;
-  parent_tags: string[];
-  child_tags: string[];
+  parent_tags?: string[];
+  child_tags?: string[];
   user_avatar?: string;
+  user_name?: string;
+  author_id?: number;
+  images?: any[];
+  files?: any[];
 };
 
 // Use the proper VN date parsing function
@@ -29,7 +35,7 @@ type PostsResponse = {
   data?: any[];
 };
 
-const home: React.FC = () => {
+const Home: React.FC = () => {
   const [showCreate, setShowCreate] = useState(false);
   const [posts, setPosts] = useState<FEPost[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -41,33 +47,43 @@ const home: React.FC = () => {
       try {
         setLoading(true);
         const userId = getCurrentUserIdFromLocalStorage();
-        const res = await getPostsByCategory("/home", 10, 0, userId || undefined);
-        
-        // Handle key-value response format from backend
-        const responseData = res?.data as PostsResponse;
-        if (!responseData?.success) {
-          throw new Error(responseData?.message || "Failed to fetch posts");
+        const res = await getPostsByCategory(
+          "/home",
+          10,
+          0,
+          userId || undefined
+        );
+
+        const { success, message, data } = res.data as PostsResponse;
+
+        if (!success) {
+          throw new Error(message || "Lỗi khi tải bài viết");
         }
-        
-        const items = responseData?.data ?? [];
-        const mapped: FEPost[] = items.map((p: any) => {
-          // Backend returns key-value objects with these field names
-          return {
-            id: Number(p.id),
-            name: p.user_name ?? "",
-            title: p.title ?? "",
-            content: p.content ?? "",
-            like_count: Number(p.likes_count ?? 0), 
-            comment_count: Number(p.comment_count ?? 0),
-            is_saved: false, 
-            is_like: false,  
-            created_at: toDate(p.created_at), // Use the VN parsing function
-            parent_tags: [], 
-            child_tags: [],  
-            user_avatar: p.user_avatar,
-          };
-        });
-        
+
+        if (!data || data.length === 0) {
+          setPosts([]);
+          return;
+        }
+
+        const mapped: FEPost[] = data.map((p) => ({
+          id: Number(p.id),
+          title: p.title ?? "",
+          content: p.content ?? "",
+          likes_count: Number(p.likes_count ?? 0),
+          comment_count: Number(p.comment_count ?? 0),
+          is_saved: p.is_saved ?? false,
+          is_like: p.is_like ?? false,
+          created_at: toDate(p.created_at),
+          parent_tags: p.parent_tags ?? [],
+          child_tags: p.child_tags ?? [],
+          user_name: p.user_name,
+          author_id: p.author_id,
+          images: p.images ?? p.image ? [p.image] : [],
+          files: p.files ?? p.file ? [p.file] : [],
+        }));
+
+        setPosts(mapped);
+
         if (mounted) setPosts(mapped);
       } catch (e: any) {
         if (mounted) setError(e?.message || "Không tải được bài viết");
@@ -89,51 +105,24 @@ const home: React.FC = () => {
           <div className="w-full max-w-2xl">
             <CreatePost
               onCancel={() => setShowCreate(false)}
-              onSubmit={(data) => {
-                const newPost = {
-                  id: Date.now(),
-                  user_id: data.user_id,
-                  title: data.title,
-                  content: data.content,
-                  likes: 0,
-                  comments: 0,
-                  createdAt: new Date(),
-                  updated_at: new Date(),
-                  tagParent: data.tagParent,
-                  tagChild: data.tagChild,
-                  initialComments: [],
-                  initialLikes: [],
-                  initialFavorites: [],
-                };
-                setShowCreate(false);
-              }}
+              onSubmit={() => setShowCreate(false)}
             />
           </div>
         </div>
       )}
       {loading && <div>Đang tải...</div>}
+      {!loading && !error && posts.length === 0 && (
+        <div className="text-gray-500 italic">Không có bài viết nào</div>
+      )}
       {error && <div className="text-red-500">Lỗi: {error}</div>}
       {!loading &&
         !error &&
+        posts.length > 0 &&
         posts.map((post) => (
-          <Content
-            key={post.id}
-            id={post.id}
-            name={post.name}
-            title={post.title}
-            content={post.content}
-            like_count={post.like_count}
-            comment_count={post.comment_count}
-            is_saved={post.is_saved}
-            is_like={post.is_like}
-            created_at={post.created_at}
-            parent_tags={post.parent_tags}
-            child_tags={post.child_tags}
-            initialComments={[]} // không cần comment mock
-          />
+          <ContentPost key={post.id} {...post} initialComments={[]} />
         ))}
     </div>
   );
 };
 
-export default home;
+export default Home;

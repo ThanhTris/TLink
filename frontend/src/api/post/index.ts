@@ -1,56 +1,15 @@
 import axios from "axios";
 
 export const getCurrentUserIdFromLocalStorage = (): number | null => {
+  // Chỉ lấy id từ localStorage key "user"
   try {
-    // 1) First try to get from "user" key (main login storage)
     const userRaw = localStorage.getItem("user");
-    if (userRaw) {
-      try {
-        const userData = JSON.parse(userRaw);
-        if (userData?.id != null) {
-          const id = Number(userData.id);
-          return Number.isFinite(id) ? id : null;
-        }
-      } catch {
-        // ignore JSON parse errors
-      }
+    if (!userRaw) return null;
+    const userData = JSON.parse(userRaw);
+    if (userData?.id != null) {
+      const id = Number(userData.id);
+      return Number.isFinite(id) ? id : null;
     }
-
-    // 2) Fallback: Try other direct ID keys
-    const directKeys = ["user_id", "currentUserId", "uid", "id"];
-    for (const key of directKeys) {
-      const raw = localStorage.getItem(key);
-      if (!raw) continue;
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed != null) {
-          const id = Number(parsed);
-          if (Number.isFinite(id)) return id;
-        }
-      } catch {
-        // If not JSON, treat as direct string/number
-        const id = Number(raw);
-        if (Number.isFinite(id)) return id;
-      }
-    }
-
-    // 3) Fallback: Try other user object keys
-    const objectKeys = ["currentUser", "auth", "profile", "account", "me"];
-    for (const key of objectKeys) {
-      const raw = localStorage.getItem(key);
-      if (!raw) continue;
-      try {
-        const obj = JSON.parse(raw);
-        const candidateId = obj?.id ?? obj?.user?.id ?? obj?.data?.id;
-        if (candidateId != null) {
-          const id = Number(candidateId);
-          if (Number.isFinite(id)) return id;
-        }
-      } catch {
-        // ignore JSON parse errors
-      }
-    }
-
     return null;
   } catch (error) {
     console.warn("Error getting user ID from localStorage:", error);
@@ -79,4 +38,38 @@ export async function unlikePost(postId: number, userId: number) {
 
 export async function getCommentCount(postId: number) {
   return axios.get(`/api/posts/${postId}/comment-count`);
+}
+
+export async function createPost(data: {
+  title: string;
+  content: string;
+  authorId: number;
+  tagParent: string;
+  tagChild?: string;
+  childTags?: string[];
+}) {
+  return axios.post("/api/posts", {
+    title: data.title,
+    content: data.content,
+    authorId: data.authorId,
+    parentTag: data.tagParent,
+    childTags: data.childTags,
+  });
+}
+
+export async function uploadPostImage(postId: number, file: File, caption?: string) {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (caption) formData.append("caption", caption);
+  return axios.post(`/api/posts/${postId}/upload-image`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}
+
+export async function uploadPostFile(postId: number, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return axios.post(`/api/posts/${postId}/upload-file`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
 }

@@ -2,53 +2,54 @@ import React, { useState, useMemo, useEffect } from "react";
 import { Heart, MessageCircle, Ellipsis, Eye, EyeOff, BookmarkCheck, BookmarkX, X } from "lucide-react";
 import Button from "./Button";
 import CommentSection from "./CommentPostSection";
-import { getTimeAgoStrict, formatDateTimeVN } from "../utils/timeAgo"; // Import the correct time functions
+import { getTimeAgoStrict, formatDateTimeVN } from "../utils/timeAgo";
 import { likePost as apiLikePost, unlikePost as apiUnlikePost, getCurrentUserIdFromLocalStorage } from "../api/post";
 import { useDispatch } from "react-redux";
-import CreatePost from "./CreatePost"; // thêm: dùng lại form để chỉnh sửa
+import CreatePost from "./CreatePost";
 
 interface ContentProps {
   id: number;
-  name: string;
   title: string;
   content: string;
-  like_count: number;
-  comment_count: number;
-  is_saved: boolean;
-  is_like: boolean;
-  created_at: Date;
-  parent_tags: string[];
-  child_tags: string[];
-  initialComments?: any[]; // thêm
-  images?: string[];
-  files?: { name: string; url: string }[];
-  // thêm: thông tin tác giả để xác định quyền chỉnh sửa/xóa
+  likes_count?: number; // backend có thể trả về likes_count
+  comment_count?: number;
+  is_saved?: boolean;
+  is_like?: boolean;
+  created_at: Date | string;
+  parent_tags?: string[]; // backend trả về mảng string
+  child_tags?: string[];
+  initialComments?: any[];
+  images?: string[] | { url: string }[]; // backend có thể trả về mảng object
+  files?: string[] | { url: string; name?: string }[];
   author_id?: number;
-  // có thể bổ sung callback nếu cần trong tương lai
+  user_name?: string; 
+
   // onDelete?: (id: number) => void;
   // onUpdate?: (id: number, data: any) => void;
 }
 
 const ContentPost: React.FC<ContentProps> = ({
   id,
-  name,
   title,
   content,
-  like_count,
+  likes_count,
   comment_count,
   is_saved,
   is_like,
   created_at,
-  parent_tags,
-  child_tags,
+  parent_tags = [],
+  child_tags = [],
   initialComments = [],
   images = [],
   files = [],
   author_id,
+  user_name,
 }) => {
   const dispatch = useDispatch();
   const [liked, setLiked] = useState(is_like);
-  const [likeCount, setLikeCount] = useState(like_count);
+  const [likeCount, setLikeCount] = useState(
+    typeof likes_count === "number" ? likes_count : 0
+  );
   const [isBookmarked, setIsBookmarked] = useState(is_saved);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
@@ -67,80 +68,14 @@ const ContentPost: React.FC<ContentProps> = ({
   const [displayParentTags, setDisplayParentTags] = useState<string[]>(parent_tags);
   const [displayChildTags, setDisplayChildTags] = useState<string[]>(child_tags);
 
-  const uid = getCurrentUserIdFromLocalStorage();
+  const currentUserId = getCurrentUserIdFromLocalStorage();
 
-  // Updated localStorage extraction logic
-  const { lsId, lsName } = useMemo(() => {
-    let idStr: string | null = null;
-    let nameStr: string | null = null;
-
-    try {
-      // 1) Try to get user data from "user" key (main login storage)
-      const userRaw = localStorage.getItem("user");
-      if (userRaw) {
-        try {
-          const userData = JSON.parse(userRaw);
-          if (userData?.id != null) idStr = String(userData.id);
-          if (userData?.name) nameStr = String(userData.name);
-        } catch {
-          // ignore JSON parse errors
-        }
-      }
-
-      // 2) Fallback: Try other possible direct ID keys
-      if (!idStr) {
-        const directKeys = ["user_id", "currentUserId", "uid", "id"];
-        for (const key of directKeys) {
-          const raw = localStorage.getItem(key);
-          if (!raw) continue;
-          try {
-            const parsed = JSON.parse(raw);
-            if (parsed != null && (typeof parsed === "number" || typeof parsed === "string")) {
-              idStr = String(parsed);
-              break;
-            }
-          } catch {
-            // If not JSON, treat as direct string
-            idStr = String(raw);
-            break;
-          }
-        }
-      }
-
-      // 3) Fallback: Try other possible user object keys
-      if (!idStr || !nameStr) {
-        const objectKeys = ["currentUser", "auth", "profile", "account", "me"];
-        for (const key of objectKeys) {
-          if (idStr && nameStr) break;
-          const raw = localStorage.getItem(key);
-          if (!raw) continue;
-          try {
-            const obj = JSON.parse(raw);
-            const candidateId = obj?.id ?? obj?.user?.id ?? obj?.data?.id;
-            const candidateName = obj?.name ?? obj?.fullName ?? obj?.user?.name ?? obj?.data?.name;
-            if (!idStr && candidateId != null) idStr = String(candidateId);
-            if (!nameStr && candidateName) nameStr = String(candidateName);
-          } catch {
-            // ignore JSON parse errors
-          }
-        }
-      }
-    } catch (error) {
-      console.warn("Error reading from localStorage:", error);
-    }
-
-    return { lsId: idStr, lsName: nameStr };
-  }, []);
-
-  // xác định chủ sở hữu: ưu tiên so id, fallback so sánh name
+  // xác định chủ sở hữu: chỉ so sánh author_id với user_id trong localStorage
   const isOwner = useMemo(() => {
     const aId = author_id != null ? String(author_id) : null;
-    const uIdStr = uid != null ? String(uid) : null;
-    if (aId && uIdStr && aId === uIdStr) return true;
-    if (aId && lsId && aId === lsId) return true;
-    if (lsName && name && lsName.trim().toLowerCase() === String(name).trim().toLowerCase()) return true;
-    return false;
-  }, [author_id, uid, lsId, lsName, name]);
+    const uIdStr = currentUserId != null ? String(currentUserId) : null;
+    return !!aId && !!uIdStr && aId === uIdStr;
+  }, [author_id, currentUserId]);
 
   // Use the new Vietnamese time functions
   const timeAgoDisplay = getTimeAgoStrict(created_at);
@@ -151,7 +86,7 @@ const ContentPost: React.FC<ContentProps> = ({
     setLiked(newLiked);
     setLikeCount((prev) => (newLiked ? prev + 1 : prev - 1)); // optimistic
     try {
-      const numericUid = Number(uid ?? lsId);
+      const numericUid = Number(currentUserId);
       if (Number.isFinite(numericUid)) {
         if (newLiked) {
           await apiLikePost(id, numericUid);
@@ -189,6 +124,38 @@ const ContentPost: React.FC<ContentProps> = ({
   if (isDeleted) {
     return null; // đã xóa khỏi giao diện
   }
+
+  // Hiển thị tên người đăng: ưu tiên user_name từ backend
+  const displayName = user_name || "Người dùng";
+
+  // Xử lý images: backend có thể trả về mảng string hoặc mảng object {url}
+  const displayImages = useMemo(() => {
+    if (!images) return [];
+    if (Array.isArray(images) && images.length > 0) {
+      if (typeof images[0] === "string") return images as string[];
+      if (typeof images[0] === "object" && images[0] !== null) {
+        return (images as any[]).map((img) => img.url || img.image_url).filter(Boolean);
+      }
+    }
+    return [];
+  }, [images]);
+
+  // Xử lý files: backend có thể trả về mảng string hoặc object {url, name}
+  const displayFiles = useMemo(() => {
+    if (!files) return [];
+    if (Array.isArray(files) && files.length > 0) {
+      if (typeof files[0] === "string") {
+        return (files as string[]).map((url) => ({ url, name: url }));
+      }
+      if (typeof files[0] === "object" && files[0] !== null) {
+        return (files as any[]).map((f) => ({
+          url: f.url || f.file_url,
+          name: f.name || f.file_name || f.url || f.file_url,
+        })).filter(f => !!f.url);
+      }
+    }
+    return [];
+  }, [files]);
 
   return (
     <div className="relative px-5 pt-5 pb-2 mt-6 bg-gray-200 shadow-sm rounded-xl w-full">
@@ -296,17 +263,17 @@ const ContentPost: React.FC<ContentProps> = ({
       </div>
 
       <div className="flex items-center flex-wrap gap-2 mb-2 text-sm text-gray-500">
-        <span>Đăng bởi {name}</span>
+        <span>Đăng bởi {displayName}</span>
         <span>• </span>
         <span title={timeTooltip} className="cursor-help hover:text-gray-700">
           {timeAgoDisplay}
         </span>
-        {displayParentTags.map((tag, idx) => (
+        {displayParentTags && displayParentTags.map((tag, idx) => (
           <span key={`parent-tag-${idx}`} className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded-full">
             #{tag}
           </span>
         ))}
-        {displayChildTags.map((tag, idx) => (
+        {displayChildTags && displayChildTags.map((tag, idx) => (
           <span key={`child-tag-${idx}`} className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded-full">
             #{tag}
           </span>
@@ -335,9 +302,9 @@ const ContentPost: React.FC<ContentProps> = ({
           </div>
 
           {/* images gallery */}
-          {images.length > 0 && (
+          {displayImages.length > 0 && (
             <div className="mb-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {images.map((src, idx) => (
+              {displayImages.map((src, idx) => (
                 <a key={`post-img-${idx}`} href={src} target="_blank" rel="noreferrer">
                   <img
                     src={src}
@@ -351,9 +318,9 @@ const ContentPost: React.FC<ContentProps> = ({
           )}
 
           {/* files list */}
-          {files.length > 0 && (
+          {displayFiles.length > 0 && (
             <div className="mb-3">
-              {files.map((f, idx) => (
+              {displayFiles.map((f, idx) => (
                 <div key={`post-file-${idx}`} className="flex items-center gap-2 text-sm">
                   <a
                     href={f.url}
@@ -430,8 +397,8 @@ const ContentPost: React.FC<ContentProps> = ({
               initialContent={displayContent}
               initialTagParent={displayParentTags[0] || "Thảo luận chung"}
               initialChildTags={displayChildTags}
-              initialImageUrls={images}
-              initialDocUrls={files}
+              initialImageUrls={displayImages}
+              initialDocUrls={displayFiles}
               onCancel={() => setIsEditing(false)}
               onSubmit={(data) => {
                 setDisplayTitle(data.title);
