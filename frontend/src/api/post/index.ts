@@ -52,7 +52,8 @@ export async function createPost(data: {
     content: data.content,
     authorId: data.authorId,
     parentTag: data.tagParent,
-    childTags: data.childTags,
+    // Đảm bảo childTags luôn là mảng hoặc undefined (không null)
+    ...(Array.isArray(data.childTags) && data.childTags.length > 0 ? { childTags: data.childTags } : {}),
   });
 }
 

@@ -221,17 +221,14 @@ const CreatePost: React.FC<CreatePostProps> = ({
   const handleSubmit = async () => {
     const keptExistingImageUrls = imagePreviews.filter((_, i) => imageOrigins[i] === "existing");
     try {
-      // 1. Tạo bài viết trước
+      // Đảm bảo childTags là mảng string hoặc undefined
       const payload: any = {
         title,
         content,
         authorId,
         tagParent,
+        ...(childTags.length > 0 ? { childTags } : {}),
       };
-      const trimmedChildTags = childTags.map((t) => t.trim()).filter(Boolean);
-      if (trimmedChildTags.length > 0) {
-        payload.childTags = trimmedChildTags;
-      }
       const res = await createPost(payload);
       // Safely extract postId from Axios response
       const postId = (res as any)?.data?.data;
@@ -253,8 +250,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
         content,
         authorId, 
         tagParent,
-        tagChild: trimmedChildTags[0],
-        childTags: trimmedChildTags,
+        ...(childTags.length > 0 ? { childTags } : {}),
         imageFiles: [],
         docFiles: [],
         existingImageUrls: keptExistingImageUrls,
@@ -530,4 +526,5 @@ const CreatePost: React.FC<CreatePostProps> = ({
 };
 
 export default CreatePost;
+
 
