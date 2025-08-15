@@ -10,7 +10,6 @@ import jakarta.persistence.StoredProcedureQuery;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.UnexpectedRollbackException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
@@ -303,7 +302,7 @@ public class PostService {
     @Transactional
     public ApiResponseDTO likePost(Long postId, Long userId) {
         try {
-            // Sử dụng stored procedure mới, truyền userId vào p_liker_id (KHÔNG phải user_id)
+            // Gọi stored procedure, truyền userId vào p_liker_id (đúng)
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_like_post");
             query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN); // p_post_id
             query.registerStoredProcedureParameter(2, Long.class, jakarta.persistence.ParameterMode.IN); // p_liker_id
@@ -311,42 +310,25 @@ public class PostService {
             query.setParameter(2, userId); // userId ở đây là liker_id
             query.execute();
             return new ApiResponseDTO(true, "Like bài viết thành công", null, null);
-        } catch (UnexpectedRollbackException urex) {
-            String message = extractRootCauseMessage(urex);
-            return new ApiResponseDTO(false, message, null, "LIKE_POST_ERROR");
         } catch (Exception ex) {
-            String message = ex.getMessage();
-            if (message != null && message.contains("SQLSTATE[45000]")) {
-                int idx = message.indexOf("MESSAGE_TEXT = '");
-                if (idx != -1) {
-                    int start = idx + "MESSAGE_TEXT = '".length();
-                    int end = message.indexOf("'", start);
-                    if (end > start) {
-                        message = message.substring(start, end);
-                    }
-                }
-            }
-            return new ApiResponseDTO(false, message, null, "LIKE_POST_ERROR");
+            String message = extractRootCauseMessage(ex);
+            return new ApiResponseDTO(false, "Lỗi khi like bài viết: " + message, null, "LIKE_POST_ERROR");
         }
     }
 
     @Transactional
     public ApiResponseDTO unlikePost(Long postId, Long userId) {
         try {
-            // Sử dụng stored procedure mới, truyền userId vào p_liker_id (KHÔNG phải user_id)
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_unlike_post");
             query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN); // p_post_id
             query.registerStoredProcedureParameter(2, Long.class, jakarta.persistence.ParameterMode.IN); // p_liker_id
             query.setParameter(1, postId);
-            query.setParameter(2, userId); // userId ở đây là liker_id
+            query.setParameter(2, userId);
             query.execute();
             return new ApiResponseDTO(true, "Unlike bài viết thành công", null, null);
-        } catch (UnexpectedRollbackException urex) {
-            String message = extractRootCauseMessage(urex);
-            return new ApiResponseDTO(false, message, null, "UNLIKE_POST_ERROR");
         } catch (Exception ex) {
-            String message = ex.getMessage();
-            return new ApiResponseDTO(false, message, null, "UNLIKE_POST_ERROR");
+            String message = extractRootCauseMessage(ex);
+            return new ApiResponseDTO(false, "Lỗi khi unlike bài viết: " + message, null, "UNLIKE_POST_ERROR");
         }
     }
 
@@ -675,5 +657,4 @@ public class PostService {
     }
 
 }
-
-
+            
