@@ -142,7 +142,30 @@ public class PostService {
             String childTagIdsCsv = "";
             if (request.getChildTags() != null && !request.getChildTags().isEmpty()) {
                 List<String> tags = request.getChildTags();
-                // Xây dựng query động cho IN (...)
+                Long parentTagIdForChild = null;
+                // Lấy parentTagId để gán cho child tag mới nếu cần
+                if (request.getParentTag() != null && !request.getParentTag().isEmpty()) {
+                    List<?> parentIds = entityManager.createNativeQuery("SELECT id FROM parent_tags WHERE name = :name")
+                        .setParameter("name", request.getParentTag())
+                        .getResultList();
+                    if (!parentIds.isEmpty()) {
+                        parentTagIdForChild = ((Number) parentIds.get(0)).longValue();
+                    }
+                }
+                // Tạo child tag nếu chưa có
+                for (String tagName : tags) {
+                    List<?> exist = entityManager.createNativeQuery("SELECT id FROM child_tags WHERE name = :name")
+                        .setParameter("name", tagName)
+                        .getResultList();
+                    if (exist.isEmpty() && parentTagIdForChild != null) {
+                        entityManager.createNativeQuery(
+                            "INSERT INTO child_tags (name, parent_tag_id) VALUES (:name, :parentTagId)")
+                            .setParameter("name", tagName)
+                            .setParameter("parentTagId", parentTagIdForChild)
+                            .executeUpdate();
+                    }
+                }
+                // Lấy lại toàn bộ id các tag con (bao gồm vừa tạo)
                 StringBuilder sql = new StringBuilder("SELECT id FROM child_tags WHERE name IN (");
                 for (int i = 0; i < tags.size(); i++) {
                     if (i > 0) sql.append(",");
@@ -200,7 +223,8 @@ public class PostService {
 
             return new ApiResponseDTO(true, "Xóa bài viết thành công", postId, null);
         } catch (Exception ex) {
-            return new ApiResponseDTO(false, "Lỗi khi xóa bài viết: " + ex.getMessage(), null, "DELETE_POST_ERROR");
+            String message = extractRootCauseMessage(ex);
+            return new ApiResponseDTO(false, "Lỗi khi xóa bài viết: " + message, null, "DELETE_POST_ERROR");
         }
     }
 
@@ -657,4 +681,3 @@ public class PostService {
     }
 
 }
-            
