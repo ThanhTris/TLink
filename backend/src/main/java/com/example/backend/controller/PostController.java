@@ -184,5 +184,25 @@ public class PostController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    @PostMapping("/{id}/save")
+    public ResponseEntity<ApiResponseDTO> savePost(
+            @PathVariable Long id,
+            @RequestParam Long userId
+    ) {
+        ApiResponseDTO response = postService.savePost(id, userId);
+        HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(response);
+    }
+
+    @PostMapping("/{id}/unsave")
+    public ResponseEntity<ApiResponseDTO> unsavePost(
+            @PathVariable Long id,
+            @RequestParam Long userId
+    ) {
+        ApiResponseDTO response = postService.unsavePost(id, userId);
+        HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(response);
+    }
 }
 

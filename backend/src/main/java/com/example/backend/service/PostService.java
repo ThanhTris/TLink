@@ -47,9 +47,42 @@ public class PostService {
             // Map childTags name list to CSV id string
             String childTagIdsCsv = "";
             if (request.getChildTags() != null && !request.getChildTags().isEmpty()) {
-                List<?> ids = entityManager.createNativeQuery("SELECT id FROM child_tags WHERE name IN (:names)")
-                        .setParameter("names", request.getChildTags())
+                List<String> tags = request.getChildTags();
+                Long parentTagIdForChild = null;
+                // Lấy parentTagId để gán cho child tag mới nếu cần
+                if (request.getParentTag() != null && !request.getParentTag().isEmpty()) {
+                    List<?> parentIds = entityManager.createNativeQuery("SELECT id FROM parent_tags WHERE name = :name")
+                        .setParameter("name", request.getParentTag())
                         .getResultList();
+                    if (!parentIds.isEmpty()) {
+                        parentTagIdForChild = ((Number) parentIds.get(0)).longValue();
+                    }
+                }
+                // Tạo child tag nếu chưa có
+                for (String tagName : tags) {
+                    List<?> exist = entityManager.createNativeQuery("SELECT id FROM child_tags WHERE name = :name")
+                        .setParameter("name", tagName)
+                        .getResultList();
+                    if (exist.isEmpty() && parentTagIdForChild != null) {
+                        entityManager.createNativeQuery(
+                            "INSERT INTO child_tags (name, parent_tag_id) VALUES (:name, :parentTagId)")
+                            .setParameter("name", tagName)
+                            .setParameter("parentTagId", parentTagIdForChild)
+                            .executeUpdate();
+                    }
+                }
+                // Lấy lại toàn bộ id các tag con (bao gồm vừa tạo)
+                StringBuilder sql = new StringBuilder("SELECT id FROM child_tags WHERE name IN (");
+                for (int i = 0; i < tags.size(); i++) {
+                    if (i > 0) sql.append(",");
+                    sql.append(":name").append(i);
+                }
+                sql.append(")");
+                var q = entityManager.createNativeQuery(sql.toString());
+                for (int i = 0; i < tags.size(); i++) {
+                    q.setParameter("name" + i, tags.get(i));
+                }
+                List<?> ids = q.getResultList();
                 StringBuilder sb = new StringBuilder();
                 for (Object id : ids) {
                     if (sb.length() > 0) sb.append(",");
@@ -109,9 +142,19 @@ public class PostService {
             // Map childTags name list to CSV id string
             String childTagIdsCsv = "";
             if (request.getChildTags() != null && !request.getChildTags().isEmpty()) {
-                List<?> ids = entityManager.createNativeQuery("SELECT id FROM child_tags WHERE name IN (:names)")
-                        .setParameter("names", request.getChildTags())
-                        .getResultList();
+                List<String> tags = request.getChildTags();
+                // Xây dựng query động cho IN (...)
+                StringBuilder sql = new StringBuilder("SELECT id FROM child_tags WHERE name IN (");
+                for (int i = 0; i < tags.size(); i++) {
+                    if (i > 0) sql.append(",");
+                    sql.append(":name").append(i);
+                }
+                sql.append(")");
+                var q = entityManager.createNativeQuery(sql.toString());
+                for (int i = 0; i < tags.size(); i++) {
+                    q.setParameter("name" + i, tags.get(i));
+                }
+                List<?> ids = q.getResultList();
                 StringBuilder sb = new StringBuilder();
                 for (Object id : ids) {
                     if (sb.length() > 0) sb.append(",");
@@ -260,12 +303,12 @@ public class PostService {
     @Transactional
     public ApiResponseDTO likePost(Long postId, Long userId) {
         try {
-            // Sử dụng stored procedure mới
+            // Sử dụng stored procedure mới, truyền userId vào p_liker_id (KHÔNG phải user_id)
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_like_post");
             query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN); // p_post_id
             query.registerStoredProcedureParameter(2, Long.class, jakarta.persistence.ParameterMode.IN); // p_liker_id
             query.setParameter(1, postId);
-            query.setParameter(2, userId);
+            query.setParameter(2, userId); // userId ở đây là liker_id
             query.execute();
             return new ApiResponseDTO(true, "Like bài viết thành công", null, null);
         } catch (UnexpectedRollbackException urex) {
@@ -290,12 +333,12 @@ public class PostService {
     @Transactional
     public ApiResponseDTO unlikePost(Long postId, Long userId) {
         try {
-            // Sử dụng stored procedure mới
+            // Sử dụng stored procedure mới, truyền userId vào p_liker_id (KHÔNG phải user_id)
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_unlike_post");
             query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN); // p_post_id
             query.registerStoredProcedureParameter(2, Long.class, jakarta.persistence.ParameterMode.IN); // p_liker_id
             query.setParameter(1, postId);
-            query.setParameter(2, userId);
+            query.setParameter(2, userId); // userId ở đây là liker_id
             query.execute();
             return new ApiResponseDTO(true, "Unlike bài viết thành công", null, null);
         } catch (UnexpectedRollbackException urex) {
@@ -594,6 +637,40 @@ public class PostService {
             return Optional.of(dto);
         } catch (Exception ex) {
             return Optional.empty();
+        }
+    }
+
+    // Save post cho user (dùng stored procedure)
+    @Transactional
+    public ApiResponseDTO savePost(Long postId, Long userId) {
+        try {
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_save_post");
+            query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN); // p_user_id
+            query.registerStoredProcedureParameter(2, Long.class, jakarta.persistence.ParameterMode.IN); // p_post_id
+            query.setParameter(1, userId);
+            query.setParameter(2, postId);
+            query.execute();
+            return new ApiResponseDTO(true, "Lưu bài viết thành công", null, null);
+        } catch (Exception ex) {
+            String msg = extractRootCauseMessage(ex);
+            return new ApiResponseDTO(false, "Lỗi khi lưu bài viết: " + msg, null, "SAVE_POST_ERROR");
+        }
+    }
+
+    // Unsave post cho user (dùng stored procedure)
+    @Transactional
+    public ApiResponseDTO unsavePost(Long postId, Long userId) {
+        try {
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_unsave_post");
+            query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN); // p_user_id
+            query.registerStoredProcedureParameter(2, Long.class, jakarta.persistence.ParameterMode.IN); // p_post_id
+            query.setParameter(1, userId);
+            query.setParameter(2, postId);
+            query.execute();
+            return new ApiResponseDTO(true, "Bỏ lưu bài viết thành công", null, null);
+        } catch (Exception ex) {
+            String msg = extractRootCauseMessage(ex);
+            return new ApiResponseDTO(false, "Lỗi khi bỏ lưu bài viết: " + msg, null, "UNSAVE_POST_ERROR");
         }
     }
 
