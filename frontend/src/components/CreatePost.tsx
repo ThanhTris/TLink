@@ -15,7 +15,7 @@ import {
   Smile,
   X,
 } from "lucide-react";
-import { createPost, uploadPostImage, uploadPostFile } from "../api/post";
+import { createPost, uploadPostImage, uploadPostFile, updatePost as apiUpdatePost } from "../api/post";
 
 const tagOptions = [
   {
@@ -77,6 +77,7 @@ interface CreatePostProps {
   initialDocUrls?: { name: string; url: string }[];
   heading?: string;
   submitLabel?: string;
+  postId?: number; // thêm prop này để biết đang edit bài nào
 }
 
 const CreatePost: React.FC<CreatePostProps> = ({
@@ -91,6 +92,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
   initialDocUrls = [],
   heading,
   submitLabel,
+  postId, // nhận prop postId
 }) => {
   const isEdit = mode === "edit";
 
@@ -229,19 +231,28 @@ const CreatePost: React.FC<CreatePostProps> = ({
         tagParent,
         ...(childTags.length > 0 ? { childTags } : {}),
       };
-      const res = await createPost(payload);
-      // Safely extract postId from Axios response
-      const postId = (res as any)?.data?.data;
-      if (!postId) throw new Error("Không lấy được postId");
+
+      let usedPostId = postId;
+      if (mode === "edit") {
+        // Gọi API cập nhật bài viết
+        if (!postId) throw new Error("Thiếu postId để cập nhật");
+        await apiUpdatePost(postId, payload);
+        usedPostId = postId;
+      } else {
+        // Gọi API tạo mới bài viết
+        const res = await createPost(payload);
+        usedPostId = (res as any)?.data?.data;
+        if (!usedPostId) throw new Error("Không lấy được postId");
+      }
 
       // 2. Upload ảnh mới (nếu có)
       for (const file of imageFiles) {
-        await uploadPostImage(postId, file);
+        await uploadPostImage(usedPostId, file);
       }
 
       // 3. Upload file tài liệu mới (nếu có)
       for (const file of docFiles) {
-        await uploadPostFile(postId, file);
+        await uploadPostFile(usedPostId, file);
       }
 
       // 4. Gọi callback khi xong
@@ -257,7 +268,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
         existingDocUrls: existingDocUrls,
       });
     } catch (err) {
-      alert("Tạo bài viết thất bại: " + (err as any)?.message);
+      alert((mode === "edit" ? "Cập nhật" : "Tạo") + " bài viết thất bại: " + (err as any)?.message);
     }
   };
 

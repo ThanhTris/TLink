@@ -81,3 +81,26 @@ export async function savePost(postId: number, userId: number) {
 export async function unsavePost(postId: number, userId: number) {
   return axios.post(`/api/posts/${postId}/unsave`, null, { params: { userId } });
 }
+
+export async function updatePost(
+  postId: number,
+  data: {
+    title: string;
+    content: string;
+    authorId?: number;
+    tagParent?: string;
+    childTags?: string[];
+  }
+) {
+  return axios.put(`/api/posts/${postId}`, {
+    title: data.title,
+    content: data.content,
+    ...(data.authorId ? { authorId: data.authorId } : {}),
+    ...(data.tagParent ? { parentTag: data.tagParent } : {}),
+    ...(Array.isArray(data.childTags) && data.childTags.length > 0 ? { childTags: data.childTags } : {}),
+  });
+}
+
+export async function deletePost(postId: number) {
+  return axios.delete(`/api/posts/${postId}`);
+}

@@ -9,6 +9,8 @@ import {
   savePost as apiSavePost,
   unsavePost as apiUnsavePost,
   getCurrentUserIdFromLocalStorage,
+  updatePost as apiUpdatePost,
+  deletePost as apiDeletePost,
 } from "../api/post";
 import { useDispatch } from "react-redux";
 import CreatePost from "./CreatePost";
@@ -183,6 +185,43 @@ const ContentPost: React.FC<ContentProps> = ({
     return [];
   }, [files]);
 
+  // Xử lý xóa bài viết
+  const handleDelete = async () => {
+    if (!id) return;
+    if (!window.confirm("Bạn có chắc muốn xóa bài viết này?")) return;
+    try {
+      await apiDeletePost(id);
+      setIsDeleted(true);
+    } catch (err) {
+      alert("Xóa bài viết thất bại!");
+    }
+  };
+
+  // Xử lý cập nhật bài viết
+  const handleUpdate = async (data: {
+    title: string;
+    content: string;
+    tagParent?: string;
+    childTags?: string[];
+  }) => {
+    try {
+      await apiUpdatePost(id, {
+        title: data.title,
+        content: data.content,
+        authorId: currentUserId ?? undefined,
+        tagParent: data.tagParent,
+        childTags: data.childTags,
+      });
+      setDisplayTitle(data.title);
+      setDisplayContent(data.content);
+      if (data.tagParent) setDisplayParentTags([data.tagParent]);
+      if (data.childTags) setDisplayChildTags(data.childTags);
+      setIsEditing(false);
+    } catch (err) {
+      alert("Cập nhật bài viết thất bại!");
+    }
+  };
+
   return (
     <div className="relative px-5 pt-5 pb-2 mt-6 bg-gray-200 shadow-sm rounded-xl w-full">
       <div className="flex items-center justify-between mb-1">
@@ -270,12 +309,7 @@ const ContentPost: React.FC<ContentProps> = ({
                       Chỉnh sửa
                     </Button>
                     <Button
-                      onClick={() => {
-                        if (confirm("Bạn có chắc muốn xóa bài viết này?")) {
-                          setIsDeleted(true);
-                          setMenuOpen(false);
-                        }
-                      }}
+                      onClick={handleDelete}
                       className="block w-full text-left px-4 py-2 rounded-md text-red-600 hover:bg-gray-100"
                     >
                       Xóa
@@ -417,6 +451,7 @@ const ContentPost: React.FC<ContentProps> = ({
             </Button>
             <CreatePost
               mode="edit"
+              postId={id} // Thêm dòng này để truyền postId khi chỉnh sửa
               heading="Chỉnh sửa bài viết"
               submitLabel="Cập nhật"
               initialTitle={displayTitle}
@@ -426,14 +461,7 @@ const ContentPost: React.FC<ContentProps> = ({
               initialImageUrls={displayImages}
               initialDocUrls={displayFiles}
               onCancel={() => setIsEditing(false)}
-              onSubmit={(data) => {
-                setDisplayTitle(data.title);
-                setDisplayContent(data.content);
-                if (data.tagParent) setDisplayParentTags([data.tagParent]);
-                if (data.childTags) setDisplayChildTags(data.childTags);
-                setIsEditing(false);
-                // có thể gọi API cập nhật ở đây nếu cần.
-              }}
+              onSubmit={handleUpdate}
             />
           </div>
         </div>
