@@ -73,3 +73,11 @@ export async function uploadPostFile(postId: number, file: File) {
     headers: { "Content-Type": "multipart/form-data" },
   });
 }
+
+export async function savePost(postId: number, userId: number) {
+  return axios.post(`/api/posts/${postId}/save`, null, { params: { userId } });
+}
+
+export async function unsavePost(postId: number, userId: number) {
+  return axios.post(`/api/posts/${postId}/unsave`, null, { params: { userId } });
+}

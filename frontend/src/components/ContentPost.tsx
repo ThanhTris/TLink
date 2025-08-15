@@ -3,7 +3,13 @@ import { Heart, MessageCircle, Ellipsis, Eye, EyeOff, BookmarkCheck, BookmarkX, 
 import Button from "./Button";
 import CommentSection from "./CommentPostSection";
 import { getTimeAgoStrict, formatDateTimeVN } from "../utils/timeAgo";
-import { likePost as apiLikePost, unlikePost as apiUnlikePost, getCurrentUserIdFromLocalStorage } from "../api/post";
+import {
+  likePost as apiLikePost,
+  unlikePost as apiUnlikePost,
+  savePost as apiSavePost,
+  unsavePost as apiUnsavePost,
+  getCurrentUserIdFromLocalStorage,
+} from "../api/post";
 import { useDispatch } from "react-redux";
 import CreatePost from "./CreatePost";
 
@@ -100,6 +106,26 @@ const ContentPost: React.FC<ContentProps> = ({
       // rollback on error
       setLiked((prev) => !prev);
       setLikeCount((prev) => (newLiked ? prev - 1 : prev + 1));
+    }
+  };
+
+  const handleBookmark = async () => {
+    const newBookmarked = !isBookmarked;
+    setIsBookmarked(newBookmarked);
+    try {
+      const numericUid = Number(currentUserId);
+      if (Number.isFinite(numericUid)) {
+        if (newBookmarked) {
+          await apiSavePost(id, numericUid);
+        } else {
+          await apiUnsavePost(id, numericUid);
+        }
+      } else {
+        throw new Error("Invalid user id");
+      }
+    } catch {
+      // rollback on error
+      setIsBookmarked((prev) => !prev);
     }
   };
 
@@ -206,9 +232,9 @@ const ContentPost: React.FC<ContentProps> = ({
                     {/* Lưu/Hủy lưu bài viết */}
                     {!isBookmarked ? (
                       <Button
-                        onClick={() => {
-                          setIsBookmarked(true);
+                        onClick={async () => {
                           setMenuOpen(false);
+                          await handleBookmark();
                         }}
                         className="block w-full text-left px-4 py-2 rounded-md  hover:bg-gray-100"
                       >
@@ -219,9 +245,9 @@ const ContentPost: React.FC<ContentProps> = ({
                       </Button>
                     ) : (
                       <Button
-                        onClick={() => {
-                          setIsBookmarked(false);
+                        onClick={async () => {
                           setMenuOpen(false);
+                          await handleBookmark();
                         }}
                         className="block w-full text-left px-4 py-2 rounded-md text-red-600 hover:bg-gray-100"
                       >
