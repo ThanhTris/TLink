@@ -36,19 +36,19 @@ public class CommentService {
             if (postRepository.findById(request.getPostId()).isEmpty()) {
                 return new ApiResponseDTO(false, "Bài viết không tồn tại", null, "POST_NOT_FOUND");
             }
-            if (userRepository.findById(request.getUserId()).isEmpty()) {
+            if (userRepository.findById(request.getAuthorId()).isEmpty()) {
                 return new ApiResponseDTO(false, "Người dùng không tồn tại", null, "USER_NOT_FOUND");
             }
           
 
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_add_comment");
             query.registerStoredProcedureParameter("p_post_id", Long.class, jakarta.persistence.ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_user_id", Long.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_author_id", Long.class, jakarta.persistence.ParameterMode.IN);
             query.registerStoredProcedureParameter("p_parent_id", Long.class, jakarta.persistence.ParameterMode.IN);
             query.registerStoredProcedureParameter("p_content", String.class, jakarta.persistence.ParameterMode.IN);
 
             query.setParameter("p_post_id", request.getPostId());
-            query.setParameter("p_user_id", request.getUserId());
+            query.setParameter("p_author_id", request.getAuthorId());
             query.setParameter("p_parent_id", request.getParentId());
             query.setParameter("p_content", request.getContent());
 
@@ -81,13 +81,13 @@ public class CommentService {
     }
 
     @Transactional
-    public ApiResponseDTO likeComment(Long commentId, Long userId) {
+    public ApiResponseDTO likeComment(Long commentId, Long likerId) {
         try {
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_like_comment");
             query.registerStoredProcedureParameter("p_comment_id", Long.class, jakarta.persistence.ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_user_id", Long.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_liker_id", Long.class, jakarta.persistence.ParameterMode.IN);
             query.setParameter("p_comment_id", commentId);
-            query.setParameter("p_user_id", userId);
+            query.setParameter("p_liker_id", likerId);
             query.execute();
             return new ApiResponseDTO(true, "Like bình luận thành công", null, null);
         } catch (UnexpectedRollbackException urex) {
@@ -110,13 +110,13 @@ public class CommentService {
     }
 
     @Transactional
-    public ApiResponseDTO unlikeComment(Long commentId, Long userId) {
+    public ApiResponseDTO unlikeComment(Long commentId, Long likerId) {
         try {
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_unlike_comment");
             query.registerStoredProcedureParameter("p_comment_id", Long.class, jakarta.persistence.ParameterMode.IN);
-            query.registerStoredProcedureParameter("p_user_id", Long.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_liker_id", Long.class, jakarta.persistence.ParameterMode.IN);
             query.setParameter("p_comment_id", commentId);
-            query.setParameter("p_user_id", userId);
+            query.setParameter("p_liker_id", likerId);
             query.execute();
             return new ApiResponseDTO(true, "Unlike bình luận thành công", null, null);
         } catch (UnexpectedRollbackException urex) {
@@ -128,13 +128,87 @@ public class CommentService {
         }
     }
 
+    @Transactional
+    public ApiResponseDTO updateComment(Long commentId, Long authorId, String content) {
+        try {
+            // Kiểm tra dữ liệu đầu vào
+            if (commentId == null || authorId == null || content == null || content.trim().isEmpty()) {
+                return new ApiResponseDTO(false, "Thiếu dữ liệu đầu vào", null, "UPDATE_COMMENT_ERROR");
+            }
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_update_comment");
+            query.registerStoredProcedureParameter("p_comment_id", Long.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_author_id", Long.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_content", String.class, jakarta.persistence.ParameterMode.IN);
+            query.setParameter("p_comment_id", commentId);
+            query.setParameter("p_author_id", authorId);
+            query.setParameter("p_content", content);
+            query.execute();
+            return new ApiResponseDTO(true, "Cập nhật bình luận thành công", null, null);
+        } catch (UnexpectedRollbackException urex) {
+            String message = extractRootCauseMessage(urex);
+            return new ApiResponseDTO(false, message, null, "UPDATE_COMMENT_ERROR");
+        } catch (Exception ex) {
+            String message = ex.getMessage();
+            if (message != null && message.contains("SQLSTATE[45000]")) {
+                int idx = message.indexOf("MESSAGE_TEXT = '");
+                if (idx != -1) {
+                    int start = idx + "MESSAGE_TEXT = '".length();
+                    int end = message.indexOf("'", start);
+                    if (end > start) {
+                        message = message.substring(start, end);
+                    }
+                }
+            }
+            return new ApiResponseDTO(false, message, null, "UPDATE_COMMENT_ERROR");
+        }
+    }
+
+    @Transactional
+    public ApiResponseDTO deleteComment(Long commentId, Long authorId) {
+        try {
+            // Kiểm tra dữ liệu đầu vào
+            if (commentId == null || authorId == null) {
+                return new ApiResponseDTO(false, "Thiếu dữ liệu đầu vào", null, "DELETE_COMMENT_ERROR");
+            }
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_delete_comment");
+            query.registerStoredProcedureParameter("p_comment_id", Long.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_author_id", Long.class, jakarta.persistence.ParameterMode.IN);
+            query.setParameter("p_comment_id", commentId);
+            query.setParameter("p_author_id", authorId);
+            query.execute();
+            return new ApiResponseDTO(true, "Xóa bình luận thành công", null, null);
+        } catch (UnexpectedRollbackException urex) {
+            String message = extractRootCauseMessage(urex);
+            return new ApiResponseDTO(false, message, null, "DELETE_COMMENT_ERROR");
+        } catch (Exception ex) {
+            String message = ex.getMessage();
+            if (message != null && message.contains("SQLSTATE[45000]")) {
+                int idx = message.indexOf("MESSAGE_TEXT = '");
+                if (idx != -1) {
+                    int start = idx + "MESSAGE_TEXT = '".length();
+                    int end = message.indexOf("'", start);
+                    if (end > start) {
+                        message = message.substring(start, end);
+                    }
+                }
+            }
+            return new ApiResponseDTO(false, message, null, "DELETE_COMMENT_ERROR");
+        }
+    }
+
     @Transactional(readOnly = true)
     public ApiResponseDTO getCommentsTree(Long postId) {
         try {
+            if (postId == null) {
+                return new ApiResponseDTO(false, "Thiếu postId", null, "GET_COMMENTS_ERROR");
+            }
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_comments_tree");
             query.registerStoredProcedureParameter("p_post_id", Long.class, jakarta.persistence.ParameterMode.IN);
             query.setParameter("p_post_id", postId);
             List<Object[]> results = query.getResultList();
+            if (results == null || results.isEmpty()) {
+                return new ApiResponseDTO(true, "Không có bình luận nào", new ArrayList<>(), null);
+            }
             List<Map<String, Object>> formattedResults = convertCommentsToKeyValue(results);
             return new ApiResponseDTO(true, "Lấy danh sách bình luận thành công", formattedResults, null);
         } catch (Exception ex) {
@@ -159,15 +233,14 @@ public class CommentService {
             Map<String, Object> comment = new HashMap<>();
             comment.put("id", row[0]);
             comment.put("post_id", row[1]);
-            comment.put("user_id", row[2]);
+            comment.put("author_id", row[2]);
             comment.put("parent_id", row[3]);
-            comment.put("content", row[4]);
-            comment.put("likes_count", row[5]);
-            comment.put("created_at", row[6]);
-            comment.put("updated_at", row[7]);
-            comment.put("user_name", row[8]);
-            comment.put("user_avatar", row[9]);
-            comment.put("level", row[10]);
+            comment.put("level", row[4]);
+            comment.put("content", row[5]);
+            comment.put("likes_count", row[6]);
+            comment.put("created_at", row[7]);
+            comment.put("author_name", row[8]);
+            comment.put("author_avatar", row[9]);
             formattedResults.add(comment);
         }
         return formattedResults;

@@ -48,7 +48,8 @@ public class SecurityConfig {
                                 "/api/comments/tree",
                                 "/api/comments/*/like",
                                 "/api/comments/*/unlike",
-                                "/api/posts/{id}/comment-count"
+                                "/api/posts/{id}/comment-count",
+                                "/api/comments/**"      // Thêm dòng này để cho phép truy cập không xác thực vào /api/comments/**
                         ).permitAll()
                         // Các endpoint khác phải xác thực
                         .anyRequest().authenticated())
