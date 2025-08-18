@@ -196,7 +196,7 @@ public class CommentService {
         }
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ApiResponseDTO getCommentsTree(Long postId) {
         try {
             if (postId == null) {

@@ -25,37 +25,30 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // Tắt CSRF cho API
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .authorizeHttpRequests(auth -> auth
-                        // Chỉ cho phép các endpoint này truy cập không xác thực
-                        .requestMatchers(
-                                "/api/auth/login",
-                                "/api/auth/login/google",
-                                "/api/auth/login/forgot-password",
-                                "/api/auth/login/verify-otp",
-                                "/api/auth/login/reset-password",
-                                "/api/auth/register",
-                                "/api/auth/register/verify-otp",
-                                "/api/posts",           // <-- dòng này chỉ match GET, nên thêm dòng dưới
-                                "/api/posts/**",        // <-- thêm dòng này để match mọi method cho /api/posts
-                                "/api/posts/category",
-                                "/api/posts/search",
-                                "/api/users/*",
-                                "/api/users/*/password",
-                                "/api/users/*/posts",
-                                "/api/comments",
-                                "/api/comments/tree",
-                                "/api/comments/*/like",
-                                "/api/comments/*/unlike",
-                                "/api/posts/{id}/comment-count",
-                                "/api/comments/**"      // Thêm dòng này để cho phép truy cập không xác thực vào /api/comments/**
-                        ).permitAll()
-                        // Các endpoint khác phải xác thực
-                        .anyRequest().authenticated())
-                .httpBasic(httpBasic -> {
-                }); // Sử dụng xác thực HTTP Basic
-
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                    "/api/comments/**",
+                    "/api/auth/login",
+                    "/api/auth/login/google",
+                    "/api/auth/login/forgot-password",
+                    "/api/auth/login/verify-otp",
+                    "/api/auth/login/reset-password",
+                    "/api/auth/register",
+                    "/api/auth/register/verify-otp",
+                    "/api/posts",
+                    "/api/posts/**",
+                    "/api/posts/category",
+                    "/api/posts/search",
+                    "/api/users/*",
+                    "/api/users/*/password",
+                    "/api/users/*/posts",
+                    "/api/posts/{id}/comment-count"
+                ).permitAll()
+                .anyRequest().authenticated()
+            )
+            .httpBasic(httpBasic -> {});
         return http.build();
     }
 
@@ -71,4 +64,4 @@ public class SecurityConfig {
         return source;
     }
 }
-
+      
