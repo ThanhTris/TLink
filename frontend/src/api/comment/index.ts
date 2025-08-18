@@ -1,8 +1,9 @@
 import axios from "axios";
 
-export async function getCommentsTree(postId: number) {
+// Lấy danh sách comment dạng cây, truyền userId để backend trả về is_liked
+export async function getCommentsTree(postId: number, userId?: number) {
   return axios.get("/api/comments/tree", {
-    params: { postId },
+    params: { postId, ...(userId ? { userId } : {}) },
   });
 }
 

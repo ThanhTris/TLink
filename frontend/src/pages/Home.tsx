@@ -16,7 +16,7 @@ type FEPost = {
   likes_count?: number;
   comment_count?: number;
   is_saved?: boolean;
-  is_liked?: boolean; // SỬA DÒNG NÀY
+  is_liked?: boolean; 
   created_at: Date;
   parent_tags?: string[];
   child_tags?: string[];

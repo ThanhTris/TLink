@@ -96,11 +96,12 @@ const CommentIteam: React.FC<CommentIteamProps> = ({
             placeholder="Chỉnh sửa bình luận..."
             onChange={(v) => {
               const prefix = mentionName ? `@${mentionName} ` : "";
+              // Nếu có mentionName và người dùng xóa prefix thì clear mention_user_id
               if (mentionName && !v.startsWith(prefix)) {
-                // người dùng đã xóa @Tên -> clear mention_user_id
                 onClearMention?.();
                 onEditChange?.(v);
               } else {
+                // Nếu vẫn còn prefix thì chỉ lấy phần content phía sau
                 onEditChange?.(mentionName ? v.slice(prefix.length) : v);
               }
             }}
@@ -181,6 +182,7 @@ const CommentIteam: React.FC<CommentIteamProps> = ({
               "[Bình luận đã bị ẩn]"
             ) : (
               <>
+                {/* Nếu có mentionName thì hiển thị @TênNgườiDùng trước content */}
                 {mentionName && <span className="font-semibold">@{mentionName} </span>}
                 {content}
               </>

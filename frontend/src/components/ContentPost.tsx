@@ -14,6 +14,7 @@ import {
 import { useDispatch } from "react-redux";
 import CreatePost from "./CreatePost";
 import { useUser } from "../hooks/useUser";
+import { getCommentsTree } from "../api/comment";
 
 interface ContentProps {
   id: number;
@@ -154,6 +155,23 @@ const ContentPost: React.FC<ContentProps> = ({
   useEffect(() => {
     setLiked(is_liked);
   }, [is_liked]);
+
+  // Khi mở comment box, fetch lại comment mới nhất từ backend
+  useEffect(() => {
+    if (showComments) {
+      const fetchComments = async () => {
+        try {
+          const res = await getCommentsTree(id, currentUserId);
+          const data = (res as any).data?.data || [];
+          setComments(data);
+        } catch {
+          setComments([]);
+        }
+      };
+      fetchComments();
+    }
+    // eslint-disable-next-line
+  }, [showComments, id, currentUserId]);
 
   if (isDeleted) {
     return null; // đã xóa khỏi giao diện
@@ -429,7 +447,7 @@ const ContentPost: React.FC<ContentProps> = ({
           {showComments && (
             <CommentSection
               initialComments={comments}
-              onAddComment={addComment}
+              onAddComment={() => {}} // hoặc truyền hàm reload nếu muốn
               currentUser="You"
               post_id={id}
             />
