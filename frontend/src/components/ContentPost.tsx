@@ -8,12 +8,12 @@ import {
   unlikePost as apiUnlikePost,
   savePost as apiSavePost,
   unsavePost as apiUnsavePost,
-  getCurrentUserIdFromLocalStorage,
   updatePost as apiUpdatePost,
   deletePost as apiDeletePost,
 } from "../api/post";
 import { useDispatch } from "react-redux";
 import CreatePost from "./CreatePost";
+import { useUser } from "../hooks/useUser";
 
 interface ContentProps {
   id: number;
@@ -22,7 +22,7 @@ interface ContentProps {
   likes_count?: number; // backend có thể trả về likes_count
   comment_count?: number;
   is_saved?: boolean;
-  is_like?: boolean;
+  is_liked?: boolean; // dùng đúng tên trường từ backend
   created_at: Date | string;
   parent_tags?: string[]; // backend trả về mảng string
   child_tags?: string[];
@@ -43,7 +43,7 @@ const ContentPost: React.FC<ContentProps> = ({
   likes_count,
   comment_count,
   is_saved,
-  is_like,
+  is_liked,
   created_at,
   parent_tags = [],
   child_tags = [],
@@ -54,7 +54,7 @@ const ContentPost: React.FC<ContentProps> = ({
   user_name,
 }) => {
   const dispatch = useDispatch();
-  const [liked, setLiked] = useState(is_like);
+  const [liked, setLiked] = useState(is_liked); // lấy từ prop is_liked
   const [likeCount, setLikeCount] = useState(
     typeof likes_count === "number" ? likes_count : 0
   );
@@ -76,7 +76,8 @@ const ContentPost: React.FC<ContentProps> = ({
   const [displayParentTags, setDisplayParentTags] = useState<string[]>(parent_tags);
   const [displayChildTags, setDisplayChildTags] = useState<string[]>(child_tags);
 
-  const currentUserId = getCurrentUserIdFromLocalStorage();
+  const user = useUser();
+  const currentUserId = user.id;
 
   // xác định chủ sở hữu: chỉ so sánh author_id với user_id trong localStorage
   const isOwner = useMemo(() => {
@@ -148,6 +149,11 @@ const ContentPost: React.FC<ContentProps> = ({
       document.body.style.overflow = prev;
     };
   }, [isEditing]);
+
+  // Đồng bộ lại state liked khi prop is_liked thay đổi (ví dụ khi load lại từ backend)
+  useEffect(() => {
+    setLiked(is_liked);
+  }, [is_liked]);
 
   if (isDeleted) {
     return null; // đã xóa khỏi giao diện

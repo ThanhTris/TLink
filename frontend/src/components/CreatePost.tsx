@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Button from "./Button";
 import Select from "react-select";
 import CreatableSelect from "react-select/creatable";
-import {getCurrentUserIdFromLocalStorage } from "../api/post";
+import {useUser} from "../hooks/useUser";
 
 import {
   Bold,
@@ -118,9 +118,9 @@ const CreatePost: React.FC<CreatePostProps> = ({
 
   const [imagePreviewsStateVersion] = useState(0); // giữ place-holder cho deps cleanup
 
-  const authorIdRaw = getCurrentUserIdFromLocalStorage();
-  const authorId = typeof authorIdRaw === "number" && Number.isFinite(authorIdRaw) ? authorIdRaw : 0; // fallback 0 nếu null
-
+  const user = useUser();
+  const authorId = user.id;
+  
   const parentOptions = tagOptions.map((tag) => ({
     value: tag.parent,
     label: tag.parent,

@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import ContentHeader from "../components/ContentHeader";
 import CreatePost from "../components/CreatePost";
 import ContentPost from "../components/ContentPost";
 import {
   getPostsByCategory,
-  getCurrentUserIdFromLocalStorage,
+
 } from "../api/post";
 import { parseMySQLDateVN } from "../utils/timeAgo";
+import { useUser } from "../hooks/useUser";
 
 type FEPost = {
   id: number;
@@ -15,7 +16,7 @@ type FEPost = {
   likes_count?: number;
   comment_count?: number;
   is_saved?: boolean;
-  is_like?: boolean;
+  is_liked?: boolean; // SỬA DÒNG NÀY
   created_at: Date;
   parent_tags?: string[];
   child_tags?: string[];
@@ -28,6 +29,7 @@ type FEPost = {
 
 // Use the proper VN date parsing function
 const toDate = (v: any) => (v ? parseMySQLDateVN(v) : new Date());
+const user = useUser();
 
 type PostsResponse = {
   success: boolean;
@@ -46,7 +48,7 @@ const Home: React.FC = () => {
     (async () => {
       try {
         setLoading(true);
-        const userId = getCurrentUserIdFromLocalStorage();
+        const userId = user.id;
         const res = await getPostsByCategory(
           "/home",
           10,
@@ -72,7 +74,7 @@ const Home: React.FC = () => {
           likes_count: Number(p.likes_count ?? 0),
           comment_count: Number(p.comment_count ?? 0),
           is_saved: p.is_saved ?? false,
-          is_like: p.is_like ?? false,
+          is_liked: p.is_liked ?? false, 
           created_at: toDate(p.created_at),
           parent_tags: p.parent_tags ?? [],
           child_tags: p.child_tags ?? [],

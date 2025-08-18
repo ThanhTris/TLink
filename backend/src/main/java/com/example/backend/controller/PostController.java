@@ -45,7 +45,7 @@ public class PostController {
             @RequestParam String categoryPath,
             @RequestParam(defaultValue = "10") int limit,
             @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(required = false) Long userId 
+            @RequestParam(required = false) Long userId // truyền userId để kiểm tra is_liked
     ) {
         ApiResponseDTO response = postService.getPostsByCategory(categoryPath, limit, offset, userId);
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
@@ -88,16 +88,20 @@ public class PostController {
     public ResponseEntity<ApiResponseDTO> searchPosts(
             @RequestParam String keyword,
             @RequestParam(defaultValue = "10") Integer limit,
-            @RequestParam(defaultValue = "0") Integer offset
+            @RequestParam(defaultValue = "0") Integer offset,
+            @RequestParam Long userId
     ) {
-        ApiResponseDTO response = postService.searchPosts(keyword, limit, offset);
+        ApiResponseDTO response = postService.searchPosts(keyword, limit, offset, userId);
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status).body(response);
     }
 
     @GetMapping("/{id}/comment-count")
-    public ResponseEntity<ApiResponseDTO> getCommentCount(@PathVariable Long id) {
-        ApiResponseDTO response = postService.getCommentCountForPost(id);
+    public ResponseEntity<ApiResponseDTO> getCommentCount(
+            @PathVariable Long id,
+            @RequestParam(required = false) Long userId // truyền userId nếu cần kiểm tra like comment
+    ) {
+        ApiResponseDTO response = postService.getCommentCountForPost(id /*, userId nếu muốn mở rộng*/);
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status).body(response);
     }

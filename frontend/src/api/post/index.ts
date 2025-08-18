@@ -20,8 +20,10 @@ export async function unlikePost(postId: number, userId: number) {
   return axios.post(`/api/posts/${postId}/unlike`, null, { params: { userId } });
 }
 
-export async function getCommentCount(postId: number) {
-  return axios.get(`/api/posts/${postId}/comment-count`);
+export async function getCommentCount(postId: number, userId?: number) {
+  return axios.get(`/api/posts/${postId}/comment-count`, {
+    params: userId ? { userId } : {},
+  });
 }
 
 export async function createPost(data: {

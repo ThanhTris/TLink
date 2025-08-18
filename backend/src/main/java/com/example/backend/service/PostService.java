@@ -316,7 +316,7 @@ public class PostService {
                 }
             }
 
-            List<Map<String, Object>> formattedResults = convertPostsToKeyValue(results);
+            List<Map<String, Object>> formattedResults = convertPostsToKeyValue(results, userId);
             return new ApiResponseDTO(true, "Lấy bài viết theo category thành công", formattedResults, null);
         } catch (Exception ex) {
             return new ApiResponseDTO(false, "Lỗi khi lấy bài viết theo category: " + ex.getMessage(), null, "GET_POSTS_BY_CATEGORY_ERROR");
@@ -357,7 +357,7 @@ public class PostService {
     }
 
     @Transactional(readOnly = true)
-    public ApiResponseDTO searchPosts(String keyword, Integer limit, Integer offset) {
+    public ApiResponseDTO searchPosts(String keyword, Integer limit, Integer offset, Long userId) {
         try {
             // Tìm kiếm theo title, content, child tag, parent tag (chỉ cần 1 trường khớp là trả về)
             String sql = "SELECT DISTINCT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
@@ -378,14 +378,15 @@ public class PostService {
                     .setParameter("limit", limit)
                     .setParameter("offset", offset)
                     .getResultList();
-            List<Map<String, Object>> formattedResults = convertPostsToKeyValue(results);
+            List<Map<String, Object>> formattedResults = convertPostsToKeyValue(results, userId);
             return new ApiResponseDTO(true, "Tìm kiếm bài viết thành công", formattedResults, null);
         } catch (Exception ex) {
             return new ApiResponseDTO(false, "Lỗi khi tìm kiếm bài viết: " + ex.getMessage(), null, "SEARCH_POST_ERROR");
         }
     }
 
-    private List<Map<String, Object>> convertPostsToKeyValue(List<Object[]> results) {
+    // Thay đổi hàm convertPostsToKeyValue để nhận userId và trả về is_liked
+    private List<Map<String, Object>> convertPostsToKeyValue(List<Object[]> results, Long userId) {
         List<Map<String, Object>> formattedResults = new ArrayList<>();
         for (Object[] row : results) {
             Map<String, Object> post = new HashMap<>();
@@ -450,6 +451,18 @@ public class PostService {
                 post.put("file", fileObj);
             } else {
                 post.put("file", null);
+            }
+
+            // Bổ sung kiểm tra is_liked
+            if (userId != null) {
+                String likeSql = "SELECT COUNT(*) FROM post_likes WHERE post_id = :postId AND liker_id = :userId";
+                Number liked = (Number) entityManager.createNativeQuery(likeSql)
+                        .setParameter("postId", postId)
+                        .setParameter("userId", userId)
+                        .getSingleResult();
+                post.put("is_liked", liked != null && liked.longValue() > 0);
+            } else {
+                post.put("is_liked", false);
             }
 
             formattedResults.add(post);
