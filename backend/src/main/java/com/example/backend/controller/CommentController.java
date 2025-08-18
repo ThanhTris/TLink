@@ -70,8 +70,11 @@ public class CommentController {
     }
 
     @GetMapping("/tree")
-    public ResponseEntity<ApiResponseDTO> getCommentsTree(@RequestParam Long postId) {
-        ApiResponseDTO response = commentService.getCommentsTree(postId);
+    public ResponseEntity<ApiResponseDTO> getCommentsTree(
+            @RequestParam Long postId,
+            @RequestParam(required = false) Long userId // nhận userId để kiểm tra is_liked
+    ) {
+        ApiResponseDTO response = commentService.getCommentsTree(postId, userId);
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status).body(response);
     }

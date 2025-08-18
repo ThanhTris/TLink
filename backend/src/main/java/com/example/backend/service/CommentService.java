@@ -200,7 +200,7 @@ public class CommentService {
     }
 
     @Transactional
-    public ApiResponseDTO getCommentsTree(Long postId) {
+    public ApiResponseDTO getCommentsTree(Long postId, Long userId) {
         try {
             if (postId == null) {
                 return new ApiResponseDTO(false, "Thiếu postId", null, "GET_COMMENTS_ERROR");
@@ -212,7 +212,7 @@ public class CommentService {
             if (results == null || results.isEmpty()) {
                 return new ApiResponseDTO(true, "Không có bình luận nào", new ArrayList<>(), null);
             }
-            List<Map<String, Object>> formattedResults = convertCommentsToKeyValue(results);
+            List<Map<String, Object>> formattedResults = convertCommentsToKeyValue(results, userId);
             return new ApiResponseDTO(true, "Lấy danh sách bình luận thành công", formattedResults, null);
         } catch (Exception ex) {
             String message = ex.getMessage();
@@ -230,11 +230,12 @@ public class CommentService {
         }
     }
 
-    private List<Map<String, Object>> convertCommentsToKeyValue(List<Object[]> results) {
+    private List<Map<String, Object>> convertCommentsToKeyValue(List<Object[]> results, Long userId) {
         List<Map<String, Object>> formattedResults = new ArrayList<>();
         for (Object[] row : results) {
             Map<String, Object> comment = new HashMap<>();
-            comment.put("id", row[0]);
+            Long commentId = ((Number) row[0]).longValue();
+            comment.put("id", commentId);
             comment.put("post_id", row[1]);
             comment.put("author_id", row[2]);
             comment.put("parent_id", row[3]);
@@ -244,6 +245,17 @@ public class CommentService {
             comment.put("created_at", row[7]);
             comment.put("author_name", row[8]);
             comment.put("author_avatar", row[9]);
+            // Bổ sung kiểm tra is_liked cho từng comment
+            if (userId != null) {
+                String likeSql = "SELECT COUNT(*) FROM comment_likes WHERE comment_id = :commentId AND liker_id = :userId";
+                Number liked = (Number) entityManager.createNativeQuery(likeSql)
+                        .setParameter("commentId", commentId)
+                        .setParameter("userId", userId)
+                        .getSingleResult();
+                comment.put("is_liked", liked != null && liked.longValue() > 0);
+            } else {
+                comment.put("is_liked", false);
+            }
             formattedResults.add(comment);
         }
         return formattedResults;
