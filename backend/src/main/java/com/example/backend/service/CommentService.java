@@ -39,18 +39,19 @@ public class CommentService {
             if (userRepository.findById(request.getAuthorId()).isEmpty()) {
                 return new ApiResponseDTO(false, "Người dùng không tồn tại", null, "USER_NOT_FOUND");
             }
-          
 
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_add_comment");
             query.registerStoredProcedureParameter("p_post_id", Long.class, jakarta.persistence.ParameterMode.IN);
             query.registerStoredProcedureParameter("p_author_id", Long.class, jakarta.persistence.ParameterMode.IN);
             query.registerStoredProcedureParameter("p_parent_id", Long.class, jakarta.persistence.ParameterMode.IN);
             query.registerStoredProcedureParameter("p_content", String.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_mention_user_id", Long.class, jakarta.persistence.ParameterMode.IN);
 
             query.setParameter("p_post_id", request.getPostId());
             query.setParameter("p_author_id", request.getAuthorId());
             query.setParameter("p_parent_id", request.getParentId());
             query.setParameter("p_content", request.getContent());
+            query.setParameter("p_mention_user_id", request.getMentionUserId());
 
             query.execute();
             Object resultObj = query.getSingleResult();
@@ -129,9 +130,8 @@ public class CommentService {
     }
 
     @Transactional
-    public ApiResponseDTO updateComment(Long commentId, Long authorId, String content) {
+    public ApiResponseDTO updateComment(Long commentId, Long authorId, String content, Long mentionUserId) {
         try {
-            // Kiểm tra dữ liệu đầu vào
             if (commentId == null || authorId == null || content == null || content.trim().isEmpty()) {
                 return new ApiResponseDTO(false, "Thiếu dữ liệu đầu vào", null, "UPDATE_COMMENT_ERROR");
             }
@@ -139,9 +139,13 @@ public class CommentService {
             query.registerStoredProcedureParameter("p_comment_id", Long.class, jakarta.persistence.ParameterMode.IN);
             query.registerStoredProcedureParameter("p_author_id", Long.class, jakarta.persistence.ParameterMode.IN);
             query.registerStoredProcedureParameter("p_content", String.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_mention_user_id", Long.class, jakarta.persistence.ParameterMode.IN);
+
             query.setParameter("p_comment_id", commentId);
             query.setParameter("p_author_id", authorId);
             query.setParameter("p_content", content);
+            query.setParameter("p_mention_user_id", mentionUserId);
+
             query.execute();
             return new ApiResponseDTO(true, "Cập nhật bình luận thành công", null, null);
         } catch (UnexpectedRollbackException urex) {
@@ -166,7 +170,6 @@ public class CommentService {
     @Transactional
     public ApiResponseDTO deleteComment(Long commentId, Long authorId) {
         try {
-            // Kiểm tra dữ liệu đầu vào
             if (commentId == null || authorId == null) {
                 return new ApiResponseDTO(false, "Thiếu dữ liệu đầu vào", null, "DELETE_COMMENT_ERROR");
             }

@@ -88,16 +88,8 @@ public class AuthService {
         if (user == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             return new ApiResponseDTO(false, "Tài khoản hoặc mật khẩu không đúng", null, "INVALID_CREDENTIALS");
         }
-        // Trả về thông tin user (ẩn password)
-        UserDTO userDTO = new UserDTO();
-        userDTO.setId(user.getId());
-        userDTO.setEmail(user.getEmail());
-        userDTO.setPhone(user.getPhoneNumber());
-        userDTO.setName(user.getName());
-        userDTO.setAvatar(user.getAvatar());
-        userDTO.setGender(user.getGender());
-        userDTO.setDateOfBirth(user.getDateOfBirth());
-        return new ApiResponseDTO(true, "Đăng nhập thành công", userDTO, null);
+        // Trả về thông tin user (ẩn password) 
+        return new ApiResponseDTO(true, "Đăng nhập thành công", new UserDTO(user), null);
     }
 
     public ApiResponseDTO forgotPassword(ForgotPasswordRequestDTO request) {

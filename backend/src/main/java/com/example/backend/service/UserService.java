@@ -35,6 +35,25 @@ public class UserService {
 
     // Các hàm quản lý user (get, update, delete, ...)
 
+  
+   
+    @Transactional(readOnly = true)
+    public ApiResponseDTO getUserById(Long userId) {
+        try {
+            if (userId == null) {
+                return new ApiResponseDTO(false, "User ID không được để trống", null, "USER_ID_NULL");
+            }
+            User user = userRepository.findById(userId).orElse(null);
+            if (user == null) {
+                return new ApiResponseDTO(false, "User không tồn tại", null, "USER_NOT_FOUND");
+            }
+            // Trả về DTO thay vì entity
+            return new ApiResponseDTO(true, "Lấy thông tin user thành công", new UserDTO(user), null);
+        } catch (Exception ex) {
+            return new ApiResponseDTO(false, "Lỗi khi lấy thông tin user: " + ex.getMessage(), null, "GET_USER_ERROR");
+        }
+    }
+
     // Đổi mật khẩu
     @Transactional
     public ApiResponseDTO changePassword(Long userId, String currentPassword, String newPassword,

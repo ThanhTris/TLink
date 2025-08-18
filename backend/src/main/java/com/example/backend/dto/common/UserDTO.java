@@ -1,5 +1,7 @@
 package com.example.backend.dto.common;
 
+import com.example.backend.entity.User;
+
 import java.time.LocalDate;
 
 public class UserDTO {
@@ -11,6 +13,22 @@ public class UserDTO {
     private String avatar;
     private LocalDate dateOfBirth;
     private String gender;
+
+    // Constructor không tham số (default)
+    public UserDTO() {
+      
+    }
+
+    // Constructor có tham số User
+    public UserDTO(User user) {
+        this.id = user.getId();
+        this.name = user.getName();
+        this.email = user.getEmail();
+        this.phone = user.getPhoneNumber();
+        this.gender = user.getGender();
+        this.dateOfBirth = user.getDateOfBirth();
+        this.avatar = user.getAvatar();
+    }
 
     // Getters and Setters
     public Long getId() {
@@ -76,4 +94,6 @@ public class UserDTO {
     public void setGender(String gender) {
         this.gender = gender;
     }
+
+ 
 }

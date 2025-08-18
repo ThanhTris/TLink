@@ -17,7 +17,11 @@ public class UserController {
     @Autowired
     private UserService userService;
     
-  
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponseDTO> getUserById(@PathVariable Long id) {
+        ApiResponseDTO response = userService.getUserById(id);
+        return ResponseEntity.status(response.isSuccess() ? HttpStatus.OK : HttpStatus.NOT_FOUND).body(response);
+    }
 
     @PutMapping("/{id}/password")
     public ResponseEntity<ApiResponseDTO> changePassword(
