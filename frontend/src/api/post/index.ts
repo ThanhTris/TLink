@@ -1,21 +1,5 @@
 import axios from "axios";
 
-export const getCurrentUserIdFromLocalStorage = (): number | null => {
-  // Chỉ lấy id từ localStorage key "user"
-  try {
-    const userRaw = localStorage.getItem("user");
-    if (!userRaw) return null;
-    const userData = JSON.parse(userRaw);
-    if (userData?.id != null) {
-      const id = Number(userData.id);
-      return Number.isFinite(id) ? id : null;
-    }
-    return null;
-  } catch (error) {
-    console.warn("Error getting user ID from localStorage:", error);
-    return null;
-  }
-};
 
 export async function getPostsByCategory(categoryPath: string, limit: number = 10, offset: number = 0, userId?: number) {
   return axios.get("/api/posts/category", {
