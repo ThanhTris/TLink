@@ -49,10 +49,11 @@ public class CommentController {
     public ResponseEntity<ApiResponseDTO> updateComment(
             @PathVariable Long id,
             @RequestParam Long authorId,
-            @RequestBody Map<String, String> body
+            @RequestBody Map<String, Object> body
     ) {
-        String content = body.get("content");
-        ApiResponseDTO response = commentService.updateComment(id, authorId, content);
+        String content = (String) body.get("content");
+        Long mentionUserId = body.get("mentionUserId") != null ? ((Number)body.get("mentionUserId")).longValue() : null;
+        ApiResponseDTO response = commentService.updateComment(id, authorId, content, mentionUserId);
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status).body(response);
     }
