@@ -87,20 +87,31 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
     let avatar: string = c.author_avatar;
     // Nếu là comment của user hiện tại, lấy từ local FE
     if (c.author_id === currentUserId) {
-      name = user.name || c.author_name;
-      avatar = user.avatar || c.author_avatar;
+      name = user.name;
+      avatar = user.avatar ?? avatar;
     }
-    // Nếu backend không trả về, fallback gọi API
-    if (!name || !avatar) {
-      const info = await fetchUserInfo(c.author_id);
-      name = info.name;
-      avatar = info.avatar;
-    }
-    let mentionName: string | undefined = undefined;
+
+    let mentionName: string = "";
     if (c.mention_user_id) {
       const mentionInfo = await fetchUserInfo(c.mention_user_id);
       mentionName = mentionInfo.name;
+      console.log("Mapped id and mentionName:", mentionName);
     }
+    console.log("Mapped comment:", {
+      id: c.id,
+      post_id: c.post_id,
+      author_id: c.author_id,
+      name,
+      avatar,
+      parent_id: c.parent_id,
+      level: c.level,
+      content: c.content,
+      createdAt: new Date(c.created_at),
+      like_count: c.likes_count ?? 0,
+      is_liked: c.is_liked ?? false,
+      mention_user_id: c.mention_user_id,
+      mentionName,
+    });
     return {
       id: c.id,
       post_id: c.post_id,
@@ -115,6 +126,7 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
       is_liked: c.is_liked ?? false,
       mention_user_id: c.mention_user_id ?? null,
       mentionName, // luôn truyền trường này
+    
     };
   };
 
@@ -124,6 +136,7 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
       try {
         const res = await getCommentsTree(post_id, currentUserId);
         const data = (res as any).data?.data || [];
+        console.log("Fetched comments:", data);
         const mapped: FEComment[] = await Promise.all(data.map(mapCommentWithMentionName));
         setFlatComments(mapped);
       } catch (e) {
@@ -252,6 +265,13 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
     const shouldDrawVertical = level === 1 || level === 2;
 
     function clearMention(id: number): void {
+      setFlatComments(prev =>
+        prev.map(c =>
+          c.id === id
+            ? { ...c, mention_user_id: null, mentionName: undefined }
+            : c
+        )
+      );
       setReplyMentions(prev => {
         const { [id]: _, ...rest } = prev;
         return rest;

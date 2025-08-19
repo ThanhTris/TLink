@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Heart } from "lucide-react";
 import Button from "./Button";
 import ReplyIteam from "./ReplyIteam";
+import { getInfoUserById } from "../api/user"; // Thêm import này
 
 interface CommentIteamProps {
   avatar: string;
@@ -61,6 +62,31 @@ const CommentIteam: React.FC<CommentIteamProps> = ({
 }) => {
   const showArc = level > 1;
 
+  // State để lưu tên người được mention nếu có mention_user_id
+  const [resolvedMentionName, setResolvedMentionName] = useState<string | undefined>(mentionName);
+
+  useEffect(() => {
+    let ignore = false;
+    // Nếu có mentionName thì ưu tiên dùng, nếu không mà có mention_user_id thì gọi API lấy tên
+    async function fetchMentionName() {
+      if (!mentionName && onClearMention) {
+        // Không có mentionName, không cần fetch
+        setResolvedMentionName(undefined);
+        return;
+      }
+      if (mentionName) {
+        setResolvedMentionName(mentionName);
+        return;
+      }
+    }
+    fetchMentionName();
+    return () => { ignore = true; };
+    // eslint-disable-next-line
+  }, [mentionName]);
+
+  // Thêm log để debug giá trị mentionName và resolvedMentionName
+  console.log("CommentIteam mentionName:", mentionName, "resolvedMentionName:", resolvedMentionName);
+
   return (
     <div className="relative flex mb-6">
       {showArc && (
@@ -92,21 +118,21 @@ const CommentIteam: React.FC<CommentIteamProps> = ({
           <ReplyIteam
             level={level}
             currentUserAvatar={avatar}
-            value={mentionName ? `@${mentionName} ${editContent}` : editContent}
+            value={resolvedMentionName ? `@${resolvedMentionName} ${editContent}` : editContent}
             placeholder="Chỉnh sửa bình luận..."
             onChange={(v) => {
-              const prefix = mentionName ? `@${mentionName} ` : "";
+              const prefix = resolvedMentionName ? `@${resolvedMentionName} ` : "";
               // Nếu có mentionName và người dùng xóa prefix thì clear mention_user_id
-              if (mentionName && !v.startsWith(prefix)) {
+              if (resolvedMentionName && !v.startsWith(prefix)) {
                 onClearMention?.();
                 onEditChange?.(v);
               } else {
                 // Nếu vẫn còn prefix thì chỉ lấy phần content phía sau
-                onEditChange?.(mentionName ? v.slice(prefix.length) : v);
+                onEditChange?.(resolvedMentionName ? v.slice(prefix.length) : v);
               }
             }}
             onSubmit={() => onSaveEdit?.()}
-            mentionPrefix={mentionName ? `@${mentionName}` : undefined}
+            mentionPrefix={resolvedMentionName ? `@${resolvedMentionName}` : undefined}
             autoFocus
             hideAvatar
           />
@@ -183,7 +209,7 @@ const CommentIteam: React.FC<CommentIteamProps> = ({
             ) : (
               <>
                 {/* Nếu có mentionName thì hiển thị @TênNgườiDùng trước content */}
-                {mentionName && <span className="font-semibold">@{mentionName} </span>}
+                {resolvedMentionName && <span className="font-semibold">@{resolvedMentionName} </span>}
                 {content}
               </>
             )}
