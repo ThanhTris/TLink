@@ -29,6 +29,10 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
+                    "/api/posts/search",
+                    "/api/posts/category",
+                    "/api/posts/{id}/comment-count",
+                    "/api/posts/**",
                     "/api/comments/**",
                     "/api/auth/login",
                     "/api/auth/login/google",
@@ -37,14 +41,9 @@ public class SecurityConfig {
                     "/api/auth/login/reset-password",
                     "/api/auth/register",
                     "/api/auth/register/verify-otp",
-                    "/api/posts",
-                    "/api/posts/**",
-                    "/api/posts/category",
-                    "/api/posts/search",
                     "/api/users/*",
                     "/api/users/*/password",
-                    "/api/users/*/posts",
-                    "/api/posts/{id}/comment-count"
+                    "/api/users/*/posts"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
@@ -64,4 +63,3 @@ public class SecurityConfig {
         return source;
     }
 }
-      

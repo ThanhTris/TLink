@@ -356,28 +356,22 @@ public class PostService {
         }
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ApiResponseDTO searchPosts(String keyword, Integer limit, Integer offset, Long userId) {
         try {
-            // Tìm kiếm theo title, content, child tag, parent tag (chỉ cần 1 trường khớp là trả về)
-            String sql = "SELECT DISTINCT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                    "u.name AS user_name, u.avatar AS user_avatar, p.user_id " +
-                    "FROM posts p " +
-                    "JOIN users u ON p.user_id = u.id " +
-                    "LEFT JOIN post_child_tags pct ON p.id = pct.post_id " +
-                    "LEFT JOIN child_tags ct ON pct.child_tag_id = ct.id " +
-                    "LEFT JOIN parent_tags pt ON ct.parent_tag_id = pt.id " +
-                    "WHERE p.title LIKE CONCAT('%', :keyword, '%') " +
-                    "OR p.content LIKE CONCAT('%', :keyword, '%') " +
-                    "OR ct.name LIKE CONCAT('%', :keyword, '%') " +
-                    "OR pt.name LIKE CONCAT('%', :keyword, '%') " +
-                    "ORDER BY p.created_at DESC " +
-                    "LIMIT :limit OFFSET :offset";
-            List<Object[]> results = entityManager.createNativeQuery(sql)
-                    .setParameter("keyword", keyword)
-                    .setParameter("limit", limit)
-                    .setParameter("offset", offset)
-                    .getResultList();
+            // Gọi stored procedure mới
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_search_posts");
+            query.registerStoredProcedureParameter(1, String.class, jakarta.persistence.ParameterMode.IN); // p_keyword
+            query.registerStoredProcedureParameter(2, Integer.class, jakarta.persistence.ParameterMode.IN); // p_limit
+            query.registerStoredProcedureParameter(3, Integer.class, jakarta.persistence.ParameterMode.IN); // p_offset
+            query.registerStoredProcedureParameter(4, Long.class, jakarta.persistence.ParameterMode.IN); // p_user_id
+
+            query.setParameter(1, keyword);
+            query.setParameter(2, limit);
+            query.setParameter(3, offset);
+            query.setParameter(4, userId);
+
+            List<Object[]> results = query.getResultList();
             List<Map<String, Object>> formattedResults = convertPostsToKeyValue(results, userId);
             return new ApiResponseDTO(true, "Tìm kiếm bài viết thành công", formattedResults, null);
         } catch (Exception ex) {
