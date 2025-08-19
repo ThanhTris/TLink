@@ -90,3 +90,14 @@ export async function updatePost(
 export async function deletePost(postId: number) {
   return axios.delete(`/api/posts/${postId}`);
 }
+
+export async function searchPosts(keyword: string, limit: number = 10, offset: number = 0, userId?: number) {
+  return axios.get("/api/posts/search", {
+    params: {
+      keyword,
+      limit,
+      offset,
+      ...(userId ? { userId } : {}),
+    },
+  });
+}
