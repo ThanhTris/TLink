@@ -243,8 +243,9 @@ public class CommentService {
             comment.put("content", row[5]);
             comment.put("likes_count", row[6]);
             comment.put("created_at", row[7]);
-            comment.put("author_name", row[8]);
-            comment.put("author_avatar", row[9]);
+            comment.put("mention_user_id", row[8]);
+            comment.put("author_name", row[9]);
+            comment.put("author_avatar", row[10]);
             // Bổ sung kiểm tra is_liked cho từng comment
             if (userId != null) {
                 String likeSql = "SELECT COUNT(*) FROM comment_likes WHERE comment_id = :commentId AND liker_id = :userId";
