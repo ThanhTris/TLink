@@ -41,9 +41,10 @@ public class UserController {
     public ResponseEntity<ApiResponseDTO> getUserPosts(
             @PathVariable Long id,
             @RequestParam(required = false, defaultValue = "10") Integer limit,
-            @RequestParam(required = false, defaultValue = "0") Integer offset
+            @RequestParam(required = false, defaultValue = "0") Integer offset,
+            @RequestParam(required = false) Long viewerId // user đang xem để kiểm tra is_liked, is_saved
     ) {
-        ApiResponseDTO response = userService.getUserPosts(id, limit, offset);
+        ApiResponseDTO response = userService.getUserPosts(id, limit, offset, viewerId);
         return ResponseEntity.status(response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST).body(response);
     }
 

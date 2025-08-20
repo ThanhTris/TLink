@@ -92,9 +92,9 @@ public class UserService {
         }
     }
 
-    // Lấy các bài viết của user
+    // Lấy các bài viết của user (dùng SP mới, có kiểm tra is_liked, is_saved)
     @Transactional
-    public ApiResponseDTO getUserPosts(Long userId, Integer limit, Integer offset) {
+    public ApiResponseDTO getUserPosts(Long userId, Integer limit, Integer offset, Long viewerId) {
         try {
             if (userId == null) {
                 return new ApiResponseDTO(false, "User ID không được để trống", null, "USER_ID_NULL");
@@ -107,10 +107,12 @@ public class UserService {
             query.registerStoredProcedureParameter("p_user_id", Long.class, jakarta.persistence.ParameterMode.IN);
             query.registerStoredProcedureParameter("p_limit", Integer.class, jakarta.persistence.ParameterMode.IN);
             query.registerStoredProcedureParameter("p_offset", Integer.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter("p_viewer_id", Long.class, jakarta.persistence.ParameterMode.IN);
 
             query.setParameter("p_user_id", userId);
             query.setParameter("p_limit", limit);
             query.setParameter("p_offset", offset);
+            query.setParameter("p_viewer_id", viewerId);
 
             List<Object[]> results = query.getResultList();
             List<Map<String, Object>> formattedResults = convertUserPostsToKeyValue(results);
@@ -133,6 +135,9 @@ public class UserService {
             post.put("created_at", row[5]);
             post.put("user_name", row[6]);
             post.put("user_avatar", row[7]);
+            post.put("author_id", row[8]);
+            post.put("is_liked", row.length > 9 ? row[9] : false);
+            post.put("is_saved", row.length > 10 ? row[10] : false);
             formattedResults.add(post);
         }
         return formattedResults;
