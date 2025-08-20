@@ -24,11 +24,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, hideLayout = false })
     "https://tse3.mm.bing.net/th/id/OIP.cVIjZO1CHBYfqIB04Kb9LgHaFj?w=1400&h=1050&rs=1&pid=ImgDetMain&o=7&rm=3";
 
   return (
-    <div>
+    <div className="flex flex-col min-h-screen">
       <Header isLoggedIn={isLoggedIn} username={username} avatar={avatar} />
-      <div className="flex w-full">
+      <div className="flex flex-1 w-full">
         <Sidebar />
-        <main className="flex-1 ml-64 mt-16">{children}</main>
+        <main className="flex-1 ml-64 mt-16 flex flex-col">
+          {children}
+        </main>
       </div>
     </div>
   );
