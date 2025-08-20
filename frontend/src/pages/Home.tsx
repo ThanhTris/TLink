@@ -73,8 +73,8 @@ const Home: React.FC = () => {
           content: p.content ?? "",
           likes_count: Number(p.likes_count ?? 0),
           comment_count: Number(p.comment_count ?? 0),
-          is_saved: p.is_saved ?? false,
-          is_liked: p.is_liked ?? false, 
+          is_saved: p.is_saved, // đã là boolean
+          is_liked: p.is_liked, // đã là boolean
           created_at: toDate(p.created_at),
           parent_tags: p.parent_tags ?? [],
           child_tags: p.child_tags ?? [],
@@ -114,14 +114,20 @@ const Home: React.FC = () => {
       )}
       {loading && <div>Đang tải...</div>}
       {!loading && !error && posts.length === 0 && (
-        <div className="text-gray-500 italic">Không có bài viết nào</div>
+        <div className="italic text-gray-500">Không có bài viết nào</div>
       )}
       {error && <div className="text-red-500">Lỗi: {error}</div>}
       {!loading &&
         !error &&
         posts.length > 0 &&
         posts.map((post) => (
-          <ContentPost key={post.id} {...post} initialComments={[]} />
+          <ContentPost
+            key={post.id}
+            {...post}
+            is_saved={post.is_saved}
+            is_liked={post.is_liked}
+            initialComments={[]}
+          />
         ))}
     </div>
   );

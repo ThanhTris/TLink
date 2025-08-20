@@ -45,7 +45,7 @@ public class PostController {
             @RequestParam String categoryPath,
             @RequestParam(defaultValue = "10") int limit,
             @RequestParam(defaultValue = "0") int offset,
-            @RequestParam(required = false) Long userId // truyền userId để kiểm tra is_liked
+            @RequestParam(required = false) Long userId // truyền userId để kiểm tra is_liked, is_saved
     ) {
         ApiResponseDTO response = postService.getPostsByCategory(categoryPath, limit, offset, userId);
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;

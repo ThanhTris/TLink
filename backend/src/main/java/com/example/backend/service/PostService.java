@@ -228,98 +228,30 @@ public class PostService {
         }
     }
 
-    @Transactional(readOnly = true)
+    @Transactional()
     public ApiResponseDTO getPostsByCategory(String categoryPath, int limit, int offset, Long userId) {
         try {
             List<Object[]> results;
-            String sql;
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_posts_by_category");
+            query.registerStoredProcedureParameter(1, String.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(2, Integer.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(3, Integer.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(4, Long.class, jakarta.persistence.ParameterMode.IN);
 
-            if ("/popular".equals(categoryPath)) {
-                sql = "SELECT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                        "u.name AS user_name, p.author_id " +
-                        "FROM posts p " +
-                        "JOIN users u ON p.author_id = u.id " +
-                        "ORDER BY p.likes_count DESC, p.comment_count DESC, p.created_at DESC " +
-                        "LIMIT :limit OFFSET :offset";
-                results = entityManager.createNativeQuery(sql)
-                        .setParameter("limit", limit)
-                        .setParameter("offset", offset)
-                        .getResultList();
-            } else if ("/saved".equals(categoryPath)) {
-                // Lấy các bài viết đã lưu của user
-                if (userId == null) {
-                    return new ApiResponseDTO(false, "Thiếu userId để lấy bài viết đã lưu", null, "USER_ID_REQUIRED");
-                }
-                User user = entityManager.find(User.class, userId);
-                if (user == null) {
-                    return new ApiResponseDTO(false, "User không tồn tại", null, "USER_NOT_FOUND");
-                }
-                sql = "SELECT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                        "u.name AS user_name, p.author_id " +
-                        "FROM posts p " +
-                        "JOIN users u ON p.author_id = u.id " +
-                        "JOIN post_saves ps ON p.id = ps.post_id " +
-                        "WHERE ps.user_id = :userId " +
-                        "ORDER BY ps.created_at DESC " +
-                        "LIMIT :limit OFFSET :offset";
-                results = entityManager.createNativeQuery(sql)
-                        .setParameter("userId", userId)
-                        .setParameter("limit", limit)
-                        .setParameter("offset", offset)
-                        .getResultList();
-            } else if ("/".equals(categoryPath) || "/home".equals(categoryPath)) {
-                // Lấy các bài viết mới nhất
-                sql = "SELECT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                        "u.name AS user_name, p.author_id " +
-                        "FROM posts p " +
-                        "JOIN users u ON p.author_id = u.id " +
-                        "ORDER BY p.created_at DESC " +
-                        "LIMIT :limit OFFSET :offset";
-                results = entityManager.createNativeQuery(sql)
-                        .setParameter("limit", limit)
-                        .setParameter("offset", offset)
-                        .getResultList();
-            } else {
-                List<String> childTagNames = getChildTagsForParentCategory(categoryPath);
-                if (!childTagNames.isEmpty()) {
-                    sql = "SELECT DISTINCT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                            "u.name AS user_name, p.author_id " +
-                            "FROM posts p " +
-                            "JOIN users u ON p.author_id = u.id " +
-                            "LEFT JOIN post_child_tags pct ON p.id = pct.post_id " +
-                            "LEFT JOIN child_tags ct ON pct.child_tag_id = ct.id " +
-                            "WHERE ct.name IN (:tagNames) " +
-                            "ORDER BY p.created_at DESC " +
-                            "LIMIT :limit OFFSET :offset";
-                    results = entityManager.createNativeQuery(sql)
-                            .setParameter("tagNames", childTagNames)
-                            .setParameter("limit", limit)
-                            .setParameter("offset", offset)
-                            .getResultList();
-                } else {
-                    String tagName = mapCategoryPathToTagName(categoryPath);
-                    sql = "SELECT p.id, p.title, p.content, p.likes_count, p.comment_count, p.created_at, " +
-                            "u.name AS user_name, p.author_id " +
-                            "FROM posts p " +
-                            "JOIN users u ON p.author_id = u.id " +
-                            "LEFT JOIN post_child_tags pct ON p.id = pct.post_id " +
-                            "LEFT JOIN child_tags ct ON pct.child_tag_id = ct.id " +
-                            "LEFT JOIN parent_tags pt ON ct.parent_tag_id = pt.id " +
-                            "WHERE ct.name = :tagName OR pt.name = :tagName " +
-                            "ORDER BY p.created_at DESC " +
-                            "LIMIT :limit OFFSET :offset";
-                    results = entityManager.createNativeQuery(sql)
-                            .setParameter("tagName", tagName)
-                            .setParameter("limit", limit)
-                            .setParameter("offset", offset)
-                            .getResultList();
-                }
-            }
+            query.setParameter(1, categoryPath);
+            query.setParameter(2, limit);
+            query.setParameter(3, offset);
+            query.setParameter(4, userId);
+
+            results = query.getResultList();
 
             List<Map<String, Object>> formattedResults = convertPostsToKeyValue(results, userId);
             return new ApiResponseDTO(true, "Lấy bài viết theo category thành công", formattedResults, null);
         } catch (Exception ex) {
-            return new ApiResponseDTO(false, "Lỗi khi lấy bài viết theo category: " + ex.getMessage(), null, "GET_POSTS_BY_CATEGORY_ERROR");
+            String message = extractRootCauseMessage(ex);
+            // Log lỗi chi tiết để debug
+            ex.printStackTrace();
+            return new ApiResponseDTO(false, "Lỗi khi lấy bài viết theo category: " + message, null, "GET_POSTS_BY_CATEGORY_ERROR");
         }
     }
 
@@ -392,7 +324,11 @@ public class PostService {
             post.put("comment_count", row[4]);
             post.put("created_at", row[5]);
             post.put("user_name", row[6]);
-            post.put("author_id", row[7]);
+            post.put("user_avatar", row[7]);
+            post.put("author_id", row[8]);
+            // Chuyển đổi 0/1 thành boolean true/false
+            post.put("is_liked", toBool(row[9]));
+            post.put("is_saved", toBool(row[10]));
 
             // Lấy parent tags - trả về mảng tên
             String parentTagSql = "SELECT pt.name FROM parent_tags pt " +
@@ -447,21 +383,18 @@ public class PostService {
                 post.put("file", null);
             }
 
-            // Bổ sung kiểm tra is_liked
-            if (userId != null) {
-                String likeSql = "SELECT COUNT(*) FROM post_likes WHERE post_id = :postId AND liker_id = :userId";
-                Number liked = (Number) entityManager.createNativeQuery(likeSql)
-                        .setParameter("postId", postId)
-                        .setParameter("userId", userId)
-                        .getSingleResult();
-                post.put("is_liked", liked != null && liked.longValue() > 0);
-            } else {
-                post.put("is_liked", false);
-            }
-
             formattedResults.add(post);
         }
         return formattedResults;
+    }
+
+    // Helper chuyển giá trị sang boolean
+    private boolean toBool(Object v) {
+        if (v == null) return false;
+        if (v instanceof Boolean) return (Boolean) v;
+        if (v instanceof Number) return ((Number) v).intValue() != 0;
+        if (v instanceof String) return v.equals("1") || ((String) v).equalsIgnoreCase("true");
+        return false;
     }
 
     // Trả về danh sách tên các tag con cho category cha (dùng path FE)

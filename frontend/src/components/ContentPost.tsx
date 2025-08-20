@@ -55,11 +55,11 @@ const ContentPost: React.FC<ContentProps> = ({
   user_name,
 }) => {
   const dispatch = useDispatch();
-  const [liked, setLiked] = useState(is_liked); // lấy từ prop is_liked
+  const [liked, setLiked] = useState(is_liked); // boolean từ backend
   const [likeCount, setLikeCount] = useState(
     typeof likes_count === "number" ? likes_count : 0
   );
-  const [isBookmarked, setIsBookmarked] = useState(is_saved);
+  const [isBookmarked, setIsBookmarked] = useState(is_saved); // boolean từ backend
   const [isExpanded, setIsExpanded] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState<any[]>(initialComments); // dùng initialComments
@@ -156,6 +156,10 @@ const ContentPost: React.FC<ContentProps> = ({
     setLiked(is_liked);
   }, [is_liked]);
 
+  useEffect(() => {
+    setIsBookmarked(is_saved);
+  }, [is_saved]);
+
   // Khi mở comment box, fetch lại comment mới nhất từ backend
   useEffect(() => {
     if (showComments) {
@@ -247,7 +251,7 @@ const ContentPost: React.FC<ContentProps> = ({
   };
 
   return (
-    <div className="relative px-5 pt-5 pb-2 mt-6 bg-gray-200 shadow-sm rounded-xl w-full">
+    <div className="relative w-full px-5 pt-5 pb-2 mt-6 bg-gray-200 shadow-sm rounded-xl">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-lg font-semibold line-clamp-1">{displayTitle}</h2>
         <div className="flex items-center gap-1">
@@ -260,7 +264,7 @@ const ContentPost: React.FC<ContentProps> = ({
               <Ellipsis size={20} />
             </Button>
             {menuOpen && (
-              <div className="absolute right-0 mt-1 w-56 bg-white rounded shadow z-10 p-1">
+              <div className="absolute right-0 z-10 w-56 p-1 mt-1 bg-white rounded shadow">
                 {!isOwner ? (
                   <>
                     {/* Ẩn/Hiện bài viết */}
@@ -270,7 +274,7 @@ const ContentPost: React.FC<ContentProps> = ({
                           setIsHidden(true);
                           setMenuOpen(false);
                         }}
-                        className="block w-full text-left px-4 py-2 rounded-md hover:bg-gray-100"
+                        className="block w-full px-4 py-2 text-left rounded-md hover:bg-gray-100"
                       >
                         <span className="flex items-center gap-2">
                           <EyeOff size={16} />
@@ -283,7 +287,7 @@ const ContentPost: React.FC<ContentProps> = ({
                           setIsHidden(false);
                           setMenuOpen(false);
                         }}
-                        className="block w-full text-left px-4 py-2 rounded-md text-blue-600 hover:bg-gray-100"
+                        className="block w-full px-4 py-2 text-left text-blue-600 rounded-md hover:bg-gray-100"
                       >
                         <span className="flex items-center gap-2">
                           <Eye size={16} />
@@ -299,7 +303,7 @@ const ContentPost: React.FC<ContentProps> = ({
                           setMenuOpen(false);
                           await handleBookmark();
                         }}
-                        className="block w-full text-left px-4 py-2 rounded-md  hover:bg-gray-100"
+                        className="block w-full px-4 py-2 text-left rounded-md hover:bg-gray-100"
                       >
                         <span className="flex items-center gap-2">
                           <BookmarkCheck size={16} />
@@ -312,7 +316,7 @@ const ContentPost: React.FC<ContentProps> = ({
                           setMenuOpen(false);
                           await handleBookmark();
                         }}
-                        className="block w-full text-left px-4 py-2 rounded-md text-red-600 hover:bg-gray-100"
+                        className="block w-full px-4 py-2 text-left text-red-600 rounded-md hover:bg-gray-100"
                       >
                         <span className="flex items-center gap-2">
                           <BookmarkX size={16} />
@@ -328,13 +332,13 @@ const ContentPost: React.FC<ContentProps> = ({
                         setIsEditing(true);
                         setMenuOpen(false);
                       }}
-                      className="block w-full text-left px-4 py-2 rounded-md text-blue-600 hover:bg-gray-100"
+                      className="block w-full px-4 py-2 text-left text-blue-600 rounded-md hover:bg-gray-100"
                     >
                       Chỉnh sửa
                     </Button>
                     <Button
                       onClick={handleDelete}
-                      className="block w-full text-left px-4 py-2 rounded-md text-red-600 hover:bg-gray-100"
+                      className="block w-full px-4 py-2 text-left text-red-600 rounded-md hover:bg-gray-100"
                     >
                       Xóa
                     </Button>
@@ -346,7 +350,7 @@ const ContentPost: React.FC<ContentProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center flex-wrap gap-2 mb-2 text-sm text-gray-500">
+      <div className="flex flex-wrap items-center gap-2 mb-2 text-sm text-gray-500">
         <span>Đăng bởi {displayName}</span>
         <span>• </span>
         <span title={timeTooltip} className="cursor-help hover:text-gray-700">
@@ -365,7 +369,7 @@ const ContentPost: React.FC<ContentProps> = ({
       </div>
 
       {isHidden ? (
-        <div className="mb-3 text-sm text-gray-600 italic">Bài viết đã bị ẩn.</div>
+        <div className="mb-3 text-sm italic text-gray-600">Bài viết đã bị ẩn.</div>
       ) : (
         <>
           <div
@@ -377,7 +381,7 @@ const ContentPost: React.FC<ContentProps> = ({
             {displayContent}
             {!isExpanded && displayContent.length > 100 && (
               <span
-                className="absolute right-0 bottom-0 bg-gray-200 pl-2 cursor-pointer text-blue-500 hover:underline"
+                className="absolute bottom-0 right-0 pl-2 text-blue-500 bg-gray-200 cursor-pointer hover:underline"
                 onClick={toggleReadMore}
               >
                 Read More
@@ -387,13 +391,13 @@ const ContentPost: React.FC<ContentProps> = ({
 
           {/* images gallery */}
           {displayImages.length > 0 && (
-            <div className="mb-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2 mb-3 sm:grid-cols-3">
               {displayImages.map((src, idx) => (
                 <a key={`post-img-${idx}`} href={src} target="_blank" rel="noreferrer">
                   <img
                     src={src}
                     alt={`img-${idx}`}
-                    className="w-full h-40 object-cover rounded-lg border border-gray-300"
+                    className="object-cover w-full h-40 border border-gray-300 rounded-lg"
                     loading="lazy"
                   />
                 </a>
@@ -410,7 +414,7 @@ const ContentPost: React.FC<ContentProps> = ({
                     href={f.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-blue-600 hover:underline break-all"
+                    className="text-blue-600 break-all hover:underline"
                   >
                     {f.name || f.url}
                   </a>
@@ -467,7 +471,7 @@ const ContentPost: React.FC<ContentProps> = ({
           >
             <Button
               onClick={() => setIsEditing(false)}
-              className="absolute top-3 right-3 p-2 rounded-full text-gray-600 hover:bg-gray-100"
+              className="absolute p-2 text-gray-600 rounded-full top-3 right-3 hover:bg-gray-100"
               title="Đóng"
               aria-label="Đóng"
             >
