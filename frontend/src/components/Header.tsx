@@ -57,7 +57,7 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, username, avatar }) => {
               <img
                 src={avatar}
                 alt="User Avatar"
-                className="object-cover w-8 h-8 rounded-full"
+                className="object-cover w-8 h-8 border-2 border-blue-400 rounded-full"
               />
               <span className="text-lg">{username}</span>
               <ChevronDown className="w-4 h-4" />
