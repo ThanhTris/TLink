@@ -41,7 +41,7 @@ public class User {
     private LocalDate dateOfBirth;
 
     @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    private LocalDate createdAt;
 
     @Column(name = "gender", length = 10)
     private String gender;
@@ -60,6 +60,6 @@ public class User {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        createdAt = LocalDate.now();
     }
 }
