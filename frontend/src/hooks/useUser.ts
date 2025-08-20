@@ -6,6 +6,7 @@ export interface UserLocalStorage {
   avatar: string | null;
   dateOfBirth: string;
   gender: string;
+  created_at?: string; // ngày tham gia
 }
 
 export function useUser() {
@@ -21,6 +22,7 @@ export function useUser() {
   const getAvatar = () => getUser()?.avatar || null;
   const getDateOfBirth = () => getUser()?.dateOfBirth || null;
   const getGender = () => getUser()?.gender || null;
+  const getCreatedAt = () => getUser()?.created_at || null;
 
   const user = getUser();
   return user || {} as UserLocalStorage;
