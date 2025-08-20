@@ -13,6 +13,7 @@ public class UserDTO {
     private String avatar;
     private LocalDate dateOfBirth;
     private String gender;
+    private LocalDate created_at;
 
     // Constructor không tham số (default)
     public UserDTO() {
@@ -28,6 +29,7 @@ public class UserDTO {
         this.gender = user.getGender();
         this.dateOfBirth = user.getDateOfBirth();
         this.avatar = user.getAvatar();
+        this.created_at = user.getCreatedAt();
     }
 
     // Getters and Setters
@@ -94,6 +96,12 @@ public class UserDTO {
     public void setGender(String gender) {
         this.gender = gender;
     }
+    public LocalDate getCreated_at() {
+        return created_at;
+    }
 
- 
+    public void setCreated_at(LocalDate created_at) {
+        this.created_at = created_at;
+    }
+
 }
