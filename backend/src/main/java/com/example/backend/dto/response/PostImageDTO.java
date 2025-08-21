@@ -7,13 +7,13 @@ public class PostImageDTO implements Serializable {
     private byte[] imageData;
     private String imageType;
     private String imageName;
-    private long imageSize;
+   
 
-    public PostImageDTO(byte[] imageData, String imageType, String imageName, long imageSize) {
+    public PostImageDTO(byte[] imageData, String imageType, String imageName) {
         this.imageData = imageData;
         this.imageType = imageType;
         this.imageName = imageName;
-        this.imageSize = imageSize;
+    
     }
 
     public byte[] getImageData() {
@@ -40,11 +40,5 @@ public class PostImageDTO implements Serializable {
         this.imageName = imageName;
     }
 
-    public long getImageSize() {
-        return imageSize;
-    }
 
-    public void setImageSize(long imageSize) {
-        this.imageSize = imageSize;
-    }
 }

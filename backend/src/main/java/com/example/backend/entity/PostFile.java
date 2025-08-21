@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "posts_file")
@@ -21,23 +20,12 @@ public class PostFile {
     private Post post;
 
     @Lob
-    @Column(name = "file_data", nullable = false)
+    @Column(columnDefinition = "LONGBLOB", name = "file_data", nullable = false)
     private byte[] fileData;
 
     @Column(name = "file_name", nullable = false, length = 255)
     private String fileName;
 
-    @Column(name = "file_type", nullable = false, length = 50)
+    @Column(name = "file_type", nullable = false, columnDefinition = "TEXT")
     private String fileType;
-
-    @Column(name = "file_size", nullable = false)
-    private Long fileSize;
-
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
 }

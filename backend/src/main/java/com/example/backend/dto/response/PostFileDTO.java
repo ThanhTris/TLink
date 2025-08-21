@@ -7,13 +7,13 @@ public class PostFileDTO implements Serializable {
     private byte[] fileData;
     private String fileType;
     private String fileName;
-    private long fileSize;
 
-    public PostFileDTO(byte[] fileData, String fileType, String fileName, long fileSize) {
+
+    public PostFileDTO(byte[] fileData, String fileType, String fileName) {
         this.fileData = fileData;
         this.fileType = fileType;
         this.fileName = fileName;
-        this.fileSize = fileSize;
+
     }
 
     public byte[] getFileData() {
@@ -40,11 +40,5 @@ public class PostFileDTO implements Serializable {
         this.fileName = fileName;
     }
 
-    public long getFileSize() {
-        return fileSize;
-    }
-
-    public void setFileSize(long fileSize) {
-        this.fileSize = fileSize;
-    }
+ 
 }
