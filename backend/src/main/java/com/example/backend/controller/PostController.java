@@ -2,12 +2,16 @@ package com.example.backend.controller;
 
 import com.example.backend.dto.request.PostCreateRequestDTO;
 import com.example.backend.dto.common.ApiResponseDTO;
+import com.example.backend.dto.response.PostImageDTO;
+import com.example.backend.dto.response.PostFileDTO;
 import com.example.backend.service.PostService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
+import java.text.Normalizer;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/posts")
@@ -106,46 +110,90 @@ public class PostController {
         return ResponseEntity.status(status).body(response);
     }
 
-    // Upload image for a post (max 5MB)
-    @PostMapping("/{id}/upload-image")
-    public ResponseEntity<ApiResponseDTO> uploadImage(
-            @PathVariable Long id,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "caption", required = false) String caption
-    ) {
-        try {
-            if (file.getSize() > 5 * 1024 * 1024) {
-                return ResponseEntity.badRequest().body(
-                    new ApiResponseDTO(false, "Ảnh vượt quá 5MB", null, "IMAGE_TOO_LARGE")
-                );
+  // Upload image for a post (max 5MB)
+@PostMapping("/{id}/upload-image")
+public ResponseEntity<ApiResponseDTO> uploadImage(
+        @PathVariable Long id,
+        @RequestParam("file") MultipartFile file,
+        @RequestParam(value = "caption", required = false) String caption
+) {
+    if (file.getSize() > 5 * 1024 * 1024) {
+        return ResponseEntity.badRequest().body(
+            new ApiResponseDTO(false, "Ảnh vượt quá 5MB", null, "IMAGE_TOO_LARGE")
+        );
+    }
+    try {
+        ApiResponseDTO response = postService.savePostImage(id, file);
+        // In ra message lỗi nếu có
+        if (!response.isSuccess()) {
+            System.err.println("UPLOAD IMAGE ERROR: " + response.getMessage());
+        }
+        HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(response);
+    } catch (Exception ex) {
+        String msg = extractRootCauseMessage(ex);
+        System.err.println("UPLOAD IMAGE EXCEPTION: " + msg);
+        return ResponseEntity.badRequest().body(
+            new ApiResponseDTO(false, msg != null ? msg : ex.getMessage(), null, "UPLOAD_IMAGE_ERROR")
+        );
+    }
+}
+
+    // Helper để lấy message nghiệp vụ từ exception (copy từ service)
+    private String extractRootCauseMessage(Throwable ex) {
+        Throwable cause = ex;
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        String msg = cause.getMessage();
+        if (msg != null && msg.contains("MESSAGE_TEXT = '")) {
+            int idx = msg.indexOf("MESSAGE_TEXT = '");
+            if (idx != -1) {
+                int start = idx + "MESSAGE_TEXT = '".length();
+                int end = msg.indexOf("'", start);
+                if (end > start) {
+                    return msg.substring(start, end);
+                }
             }
-            ApiResponseDTO response = postService.savePostImage(id, file, caption);
-            HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
-            return ResponseEntity.status(status).body(response);
-        } catch (Exception ex) {
-            return ResponseEntity.badRequest().body(
-                new ApiResponseDTO(false, "Lỗi upload ảnh: " + ex.getMessage(), null, "UPLOAD_IMAGE_ERROR")
-            );
+        }
+        return msg;
+    }
+
+    private String toAsciiFileName(String fileName) {
+        String normalized = Normalizer.normalize(fileName, Normalizer.Form.NFD);
+        String ascii = normalized.replaceAll("[^\\p{ASCII}]", "");
+        // Loại bỏ ký tự không hợp lệ cho tên file nếu cần
+        ascii = ascii.replaceAll("[\\\\/:*?\"<>|]", "_");
+        return ascii;
+    }
+
+    private String toContentDispositionFilename(String fileName) {
+        // Encode tên file theo RFC 5987 để hỗ trợ Unicode (tiếng Việt, ký tự đặc biệt)
+        // Ví dụ: filename*=UTF-8''ten%20tieng%20viet.pdf
+        try {
+            String encoded = java.net.URLEncoder.encode(fileName, java.nio.charset.StandardCharsets.UTF_8)
+                .replaceAll("\\+", "%20");
+            return "UTF-8''" + encoded;
+        } catch (Exception e) {
+            // Fallback ASCII nếu lỗi
+            return toAsciiFileName(fileName);
         }
     }
 
-    // API trả ảnh cho frontend
+    // API trả ảnh cho frontend (trả về ApiResponseDTO, FE sẽ lấy dữ liệu base64 hoặc binary từ trường data)
     @GetMapping("/image/{imageId}")
     public ResponseEntity<byte[]> getPostImage(@PathVariable Long imageId) {
-        try {
-            var imageOpt = postService.getPostImageById(imageId);
-            if (imageOpt.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-            var img = imageOpt.get();
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.parseMediaType(img.getImageType()));
-            headers.setContentLength(img.getImageSize());
-            headers.setContentDisposition(ContentDisposition.inline().filename(img.getImageName()).build());
-            return new ResponseEntity<>(img.getImageData(), headers, HttpStatus.OK);
-        } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        ApiResponseDTO response = postService.getPostImageById(imageId);
+        if (!response.isSuccess() || response.getData() == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
+        PostImageDTO dto = (PostImageDTO) response.getData();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(dto.getImageType()));
+        // Dùng filename* để hỗ trợ Unicode
+        headers.add(HttpHeaders.CONTENT_DISPOSITION,
+            "inline; filename=\"" + toAsciiFileName(dto.getImageName()) + "\"; filename*=UTF-8''" + java.net.URLEncoder.encode(dto.getImageName(), java.nio.charset.StandardCharsets.UTF_8).replaceAll("\\+", "%20"));
+        return new ResponseEntity<>(dto.getImageData(), headers, HttpStatus.OK);
     }
 
     // Upload file cho post (max 5MB)
@@ -170,23 +218,20 @@ public class PostController {
         }
     }
 
-    // API trả file cho frontend
+    // API trả file cho frontend (trả về file binary, giống như ảnh)
     @GetMapping("/file/{fileId}")
     public ResponseEntity<byte[]> getPostFile(@PathVariable Long fileId) {
-        try {
-            var fileOpt = postService.getPostFileById(fileId);
-            if (fileOpt.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-            var f = fileOpt.get();
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.parseMediaType(f.getFileType()));
-            headers.setContentLength(f.getFileSize());
-            headers.setContentDisposition(ContentDisposition.attachment().filename(f.getFileName()).build());
-            return new ResponseEntity<>(f.getFileData(), headers, HttpStatus.OK);
-        } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        ApiResponseDTO response = postService.getPostFileById(fileId);
+        if (!response.isSuccess() || response.getData() == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
+        PostFileDTO dto = (PostFileDTO) response.getData();
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(dto.getFileType()));
+        // Dùng filename* để hỗ trợ Unicode
+        headers.add(HttpHeaders.CONTENT_DISPOSITION,
+            "attachment; filename=\"" + toAsciiFileName(dto.getFileName()) + "\"; filename*=UTF-8''" + java.net.URLEncoder.encode(dto.getFileName(), java.nio.charset.StandardCharsets.UTF_8).replaceAll("\\+", "%20"));
+        return new ResponseEntity<>(dto.getFileData(), headers, HttpStatus.OK);
     }
 
     @PostMapping("/{id}/save")
@@ -209,4 +254,3 @@ public class PostController {
         return ResponseEntity.status(status).body(response);
     }
 }
-

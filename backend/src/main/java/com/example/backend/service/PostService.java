@@ -4,21 +4,30 @@ import com.example.backend.dto.request.PostCreateRequestDTO;
 import com.example.backend.entity.User;
 import com.example.backend.dto.common.ApiResponseDTO;
 import com.example.backend.repository.PostRepository;
+import com.example.backend.repository.PostImageRepository;
+import com.example.backend.repository.PostFileRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.PersistenceException;
 import jakarta.persistence.StoredProcedureQuery;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.sql.rowset.serial.SerialBlob;
+
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import com.example.backend.dto.response.PostImageDTO;
 import com.example.backend.dto.response.PostFileDTO;
+import com.example.backend.entity.PostImage;
+import com.example.backend.entity.Post;
 
 @Service
 public class PostService {
@@ -28,6 +37,12 @@ public class PostService {
 
     @Autowired
     private PostRepository postRepository;
+
+    @Autowired
+    private PostImageRepository postImageRepository;
+
+    @Autowired
+    private PostFileRepository postFileRepository;
 
     // Tạo bài viết mới sử dụng stored procedure mới
     @Transactional
@@ -489,103 +504,156 @@ public class PostService {
     }
 
     // Thêm phương thức upload ảnh cho post
-    @Transactional
-    public ApiResponseDTO savePostImage(Long postId, MultipartFile file, String caption) {
-        try {
-            if (!postRepository.existsById(postId)) {
-                return new ApiResponseDTO(false, "Bài viết không tồn tại", null, "POST_NOT_FOUND");
-            }
-            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_save_post_image");
-            query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN);
-            query.registerStoredProcedureParameter(2, byte[].class, jakarta.persistence.ParameterMode.IN);
-            query.registerStoredProcedureParameter(3, String.class, jakarta.persistence.ParameterMode.IN);
-            query.registerStoredProcedureParameter(4, String.class, jakarta.persistence.ParameterMode.IN);
-            query.registerStoredProcedureParameter(5, Long.class, jakarta.persistence.ParameterMode.IN);
-            query.registerStoredProcedureParameter(6, String.class, jakarta.persistence.ParameterMode.IN);
-
-            query.setParameter(1, postId);
-            query.setParameter(2, file.getBytes());
-            query.setParameter(3, file.getOriginalFilename());
-            query.setParameter(4, file.getContentType());
-            query.setParameter(5, file.getSize());
-            query.setParameter(6, caption);
-
-            query.execute();
-            return new ApiResponseDTO(true, "Upload ảnh thành công", null, null);
-        } catch (Exception ex) {
-            return new ApiResponseDTO(false, "Lỗi khi upload ảnh: " + ex.getMessage(), null, "UPLOAD_IMAGE_ERROR");
-        }
+@Transactional
+public ApiResponseDTO savePostImage(Long postId, MultipartFile file) {
+    if (postId == null || postId <= 0) {
+        return new ApiResponseDTO(false, "ID bài viết không hợp lệ", null, "INVALID_POST_ID");
+    }
+    boolean postExists = postRepository.existsById(postId);
+    if (!postExists) {
+        return new ApiResponseDTO(false, "Bài viết không tồn tại", null, "POST_NOT_FOUND");
+    }
+    if (file == null || file.isEmpty()) {
+        return new ApiResponseDTO(false, "File ảnh không được để trống", null, "INVALID_FILE");
+    }
+    if (file.getSize() > 5 * 1024 * 1024) {
+        return new ApiResponseDTO(false, "Kích thước ảnh vượt quá 5MB", null, "IMAGE_TOO_LARGE");
+    }
+    if (!Arrays.asList("image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp").contains(file.getContentType())) {
+        return new ApiResponseDTO(false, "Loại ảnh không hợp lệ, chỉ hỗ trợ JPEG, PNG, GIF, BMP, hoặc WebP", null, "INVALID_FILE_TYPE");
     }
 
-    // Thêm phương thức lấy ảnh theo id
-    @Transactional(readOnly = true)
-    public Optional<PostImageDTO> getPostImageById(Long imageId) {
-        try {
-            String sql = "SELECT image_data, image_type, image_name, image_size FROM posts_image WHERE id = ?";
-            Object[] row = (Object[]) entityManager.createNativeQuery(sql)
-                .setParameter(1, imageId)
-                .getSingleResult();
-            if (row == null) return Optional.empty();
-            PostImageDTO dto = new PostImageDTO(
-                (byte[]) row[0],
-                (String) row[1],
-                (String) row[2],
-                ((Number) row[3]).longValue()
-            );
-            return Optional.of(dto);
-        } catch (Exception ex) {
-            return Optional.empty();
+    try {
+        byte[] fileBytes = file.getBytes();
+        if (fileBytes.length == 0) {
+            return new ApiResponseDTO(false, "Dữ liệu ảnh rỗng", null, "EMPTY_FILE");
         }
+
+        // Nén ảnh bằng CompressService
+        byte[] compressedImage = CompressService.compress(fileBytes);
+
+        // Gọi stored procedure để lưu ảnh
+        StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_save_post_image");
+        query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN); // p_post_id
+        query.registerStoredProcedureParameter(2, byte[].class, jakarta.persistence.ParameterMode.IN); // p_image_data
+        query.registerStoredProcedureParameter(3, String.class, jakarta.persistence.ParameterMode.IN); // p_image_name
+        query.registerStoredProcedureParameter(4, String.class, jakarta.persistence.ParameterMode.IN); // p_image_type
+
+        query.setParameter(1, postId);
+        query.setParameter(2, compressedImage);
+        query.setParameter(3, file.getOriginalFilename());
+        query.setParameter(4, file.getContentType());
+
+        query.execute();
+
+        // Chỉ trả về post_id là đủ
+        Map<String, Object> imageInfo = new HashMap<>();
+        imageInfo.put("post_id", postId);
+
+        return new ApiResponseDTO(true, "Upload ảnh thành công", imageInfo, null);
+    } catch (IOException ioEx) {
+        return new ApiResponseDTO(false, "Lỗi khi đọc dữ liệu ảnh: " + ioEx.getMessage(), null, "UPLOAD_IMAGE_IO_ERROR");
+    } catch (Exception ex) {
+        return new ApiResponseDTO(false, "Lỗi khi upload ảnh: " + ex.getMessage(), null, "UPLOAD_IMAGE_ERROR");
     }
+}
+
+// Khi trả ảnh về client, giải nén bằng CompressService
+@Transactional
+public ApiResponseDTO getPostImageById(Long imageId) {
+    if (imageId == null || imageId <= 0) {
+        return new ApiResponseDTO(false, "ID ảnh không hợp lệ", null, "INVALID_IMAGE_ID");
+    }
+    if (!postImageRepository.existsById(imageId)) {
+        return new ApiResponseDTO(false, "Ảnh không tồn tại", null, "IMAGE_NOT_FOUND");
+    }
+    try {
+        String sql = "SELECT image_data, image_type, image_name FROM posts_image WHERE id = ?";
+        Object[] row = (Object[]) entityManager.createNativeQuery(sql)
+            .setParameter(1, imageId)
+            .getSingleResult();
+        if (row == null) {
+            return new ApiResponseDTO(false, "Ảnh không tồn tại", null, "IMAGE_NOT_FOUND");
+        }
+        byte[] decompressed = CompressService.decompress((byte[]) row[0]);
+        PostImageDTO dto = new PostImageDTO(
+            decompressed,
+            (String) row[1],
+            (String) row[2]
+        );
+        return new ApiResponseDTO(true, "Lấy ảnh thành công", dto, null);
+    } catch (Exception ex) {
+        return new ApiResponseDTO(false, "Lỗi khi lấy ảnh: " + ex.getMessage(), null, "GET_IMAGE_ERROR");
+    }
+}
 
     // Thêm phương thức upload file cho post
     @Transactional
     public ApiResponseDTO savePostFile(Long postId, MultipartFile file) {
+        // Kiểm tra null, empty, loại file, ... trước khi đọc file.getBytes()
+        if (!postRepository.existsById(postId)) {
+            return new ApiResponseDTO(false, "Bài viết không tồn tại", null, "POST_NOT_FOUND");
+        }
+        if (file == null) {
+            return new ApiResponseDTO(false, "File không được để trống", null, "INVALID_FILE");
+        }
+        if (file.isEmpty()) {
+            return new ApiResponseDTO(false, "File không được để trống", null, "INVALID_FILE");
+        }
+        // Kiểm tra loại file trước khi đọc file.getSize()
+        List<String> allowedTypes = Arrays.asList(
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "text/plain",
+            "application/zip",
+            "application/x-rar-compressed",
+            "image/png",
+            "image/jpeg",
+            "image/jpg"
+        );
+        String contentType = file.getContentType();
+        if (contentType == null || !allowedTypes.contains(contentType)) {
+            return new ApiResponseDTO(false, "Loại file không hợp lệ. Chỉ hỗ trợ pdf, doc, docx, xls, xlsx, ppt, pptx, txt, zip, rar, png, jpg.", null, "INVALID_FILE_TYPE");
+        }
+        // Kiểm tra kích thước file (nên kiểm tra sau khi chắc chắn file != null)
+        if (file.getSize() > 5 * 1024 * 1024) {
+            return new ApiResponseDTO(false, "Kích thước file vượt quá 5MB", null, "FILE_TOO_LARGE");
+        }
         try {
-            if (!postRepository.existsById(postId)) {
-                return new ApiResponseDTO(false, "Bài viết không tồn tại", null, "POST_NOT_FOUND");
-            }
+            byte[] fileBytes = file.getBytes();
+            // byte[] compressedFile = CompressService.compress(fileBytes); // Nếu muốn nén file
+
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_save_post_file");
             query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN);
             query.registerStoredProcedureParameter(2, byte[].class, jakarta.persistence.ParameterMode.IN);
             query.registerStoredProcedureParameter(3, String.class, jakarta.persistence.ParameterMode.IN);
             query.registerStoredProcedureParameter(4, String.class, jakarta.persistence.ParameterMode.IN);
-            query.registerStoredProcedureParameter(5, Long.class, jakarta.persistence.ParameterMode.IN);
 
             query.setParameter(1, postId);
-            query.setParameter(2, file.getBytes());
+            query.setParameter(2, fileBytes); // hoặc compressedFile nếu muốn nén
             query.setParameter(3, file.getOriginalFilename());
-            query.setParameter(4, file.getContentType());
-            query.setParameter(5, file.getSize());
+            query.setParameter(4, contentType);
 
             query.execute();
-            return new ApiResponseDTO(true, "Upload file thành công", null, null);
+
+            // Chỉ trả về post_id là đủ
+            Map<String, Object> fileInfo = new HashMap<>();
+            fileInfo.put("post_id", postId);
+
+            return new ApiResponseDTO(true, "Upload file thành công", fileInfo, null);
+        } catch (IOException ioEx) {
+            return new ApiResponseDTO(false, "Lỗi khi đọc dữ liệu file: " + ioEx.getMessage(), null, "UPLOAD_FILE_IO_ERROR");
         } catch (Exception ex) {
             return new ApiResponseDTO(false, "Lỗi khi upload file: " + ex.getMessage(), null, "UPLOAD_FILE_ERROR");
         }
     }
 
-    // Thêm phương thức lấy file theo id
-    @Transactional(readOnly = true)
-    public Optional<PostFileDTO> getPostFileById(Long fileId) {
-        try {
-            String sql = "SELECT file_data, file_type, file_name, file_size FROM posts_file WHERE id = ?";
-            Object[] row = (Object[]) entityManager.createNativeQuery(sql)
-                .setParameter(1, fileId)
-                .getSingleResult();
-            if (row == null) return Optional.empty();
-            PostFileDTO dto = new PostFileDTO(
-                (byte[]) row[0],
-                (String) row[1],
-                (String) row[2],
-                ((Number) row[3]).longValue()
-            );
-            return Optional.of(dto);
-        } catch (Exception ex) {
-            return Optional.empty();
-        }
-    }
-
+    
     // Save post cho user (dùng stored procedure)
     @Transactional
     public ApiResponseDTO savePost(Long postId, Long userId) {
@@ -620,4 +688,33 @@ public class PostService {
         }
     }
 
+    // Khi trả file về client, giải nén bằng CompressService
+@Transactional
+public ApiResponseDTO getPostFileById(Long fileId) {
+    if (fileId == null || fileId <= 0) {
+        return new ApiResponseDTO(false, "ID file không hợp lệ", null, "INVALID_FILE_ID");
+    }
+    // Nếu có PostFileRepository thì kiểm tra tồn tại ở đây, ví dụ:
+    if (!postFileRepository.existsById(fileId)) {
+        return new ApiResponseDTO(false, "File không tồn tại", null, "FILE_NOT_FOUND");
+    }
+    try {
+        String sql = "SELECT file_data, file_type, file_name FROM posts_file WHERE id = ?";
+        Object[] row = (Object[]) entityManager.createNativeQuery(sql)
+            .setParameter(1, fileId)
+            .getSingleResult();
+        if (row == null) {
+            return new ApiResponseDTO(false, "File không tồn tại", null, "FILE_NOT_FOUND");
+        }
+        byte[] decompressed = CompressService.decompress((byte[]) row[0]);
+        PostFileDTO dto = new PostFileDTO(
+            decompressed,
+            (String) row[1],
+            (String) row[2]
+        );
+        return new ApiResponseDTO(true, "Lấy file thành công", dto, null);
+    } catch (Exception ex) {
+        return new ApiResponseDTO(false, "Lỗi khi lấy file: " + ex.getMessage(), null, "GET_FILE_ERROR");
+    }
+}
 }
