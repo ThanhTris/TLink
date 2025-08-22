@@ -253,4 +253,17 @@ public ResponseEntity<ApiResponseDTO> uploadImage(
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status).body(response);
     }
+
+    // API lấy bài viết theo user (bao gồm ảnh/file)
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<ApiResponseDTO> getPostsByUser(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(required = false) Long viewerId // user đang xem (để kiểm tra is_liked, is_saved)
+    ) {
+        ApiResponseDTO response = postService.getPostsByUser(userId, limit, offset, viewerId);
+        HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(response);
+    }
 }

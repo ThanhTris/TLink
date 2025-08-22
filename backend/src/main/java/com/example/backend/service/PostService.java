@@ -270,6 +270,33 @@ public class PostService {
         }
     }
 
+    // Lấy bài viết theo user (bao gồm ảnh/file)
+    @Transactional
+    public ApiResponseDTO getPostsByUser(Long userId, int limit, int offset, Long viewerId) {
+        try {
+            List<Object[]> results;
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_user_posts");
+            query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(2, Integer.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(3, Integer.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(4, Long.class, jakarta.persistence.ParameterMode.IN);
+
+            query.setParameter(1, userId);
+            query.setParameter(2, limit);
+            query.setParameter(3, offset);
+            query.setParameter(4, viewerId);
+
+            results = query.getResultList();
+
+            List<Map<String, Object>> formattedResults = convertPostsToKeyValue(results, viewerId);
+            return new ApiResponseDTO(true, "Lấy bài viết theo user thành công", formattedResults, null);
+        } catch (Exception ex) {
+            String message = extractRootCauseMessage(ex);
+            ex.printStackTrace();
+            return new ApiResponseDTO(false, "Lỗi khi lấy bài viết theo user: " + message, null, "GET_POSTS_BY_USER_ERROR");
+        }
+    }
+
     @Transactional
     public ApiResponseDTO likePost(Long postId, Long userId) {
         try {
@@ -341,7 +368,6 @@ public class PostService {
             post.put("user_name", row[6]);
             post.put("user_avatar", row[7]);
             post.put("author_id", row[8]);
-            // Chuyển đổi 0/1 thành boolean true/false
             post.put("is_liked", toBool(row[9]));
             post.put("is_saved", toBool(row[10]));
 
@@ -363,40 +389,35 @@ public class PostService {
                     .getResultList();
             post.put("child_tags", childTagNames);
 
-            // Lấy image - trả về object { id, name, type, size, caption }
-            String imageSql = "SELECT id, image_name, image_type, image_size, caption FROM posts_image WHERE post_id = :postId ORDER BY id ASC LIMIT 1";
-            List<Object[]> imageResults = entityManager.createNativeQuery(imageSql)
+            // Lấy tất cả ảnh - trả về mảng object { id, name, type }
+            String imagesSql = "SELECT id, image_name, image_type FROM posts_image WHERE post_id = :postId ORDER BY id ASC";
+            List<Object[]> imageResults = entityManager.createNativeQuery(imagesSql)
                     .setParameter("postId", postId)
                     .getResultList();
-            if (!imageResults.isEmpty()) {
-                Object[] img = imageResults.get(0);
+            List<Map<String, Object>> images = new ArrayList<>();
+            for (Object[] img : imageResults) {
                 Map<String, Object> imageObj = new HashMap<>();
                 imageObj.put("id", img[0]);
                 imageObj.put("name", img[1]);
                 imageObj.put("type", img[2]);
-                imageObj.put("size", img[3]);
-                imageObj.put("caption", img[4]);
-                post.put("image", imageObj);
-            } else {
-                post.put("image", null);
+                images.add(imageObj);
             }
+            post.put("images", images);
 
-            // Lấy file - trả về object { id, name, type, size }
-            String fileSql = "SELECT id, file_name, file_type, file_size FROM posts_file WHERE post_id = :postId ORDER BY id ASC LIMIT 1";
-            List<Object[]> fileResults = entityManager.createNativeQuery(fileSql)
+            // Lấy tất cả file - trả về mảng object { id, name, type }
+            String filesSql = "SELECT id, file_name, file_type FROM posts_file WHERE post_id = :postId ORDER BY id ASC";
+            List<Object[]> fileResults = entityManager.createNativeQuery(filesSql)
                     .setParameter("postId", postId)
                     .getResultList();
-            if (!fileResults.isEmpty()) {
-                Object[] file = fileResults.get(0);
+            List<Map<String, Object>> files = new ArrayList<>();
+            for (Object[] file : fileResults) {
                 Map<String, Object> fileObj = new HashMap<>();
                 fileObj.put("id", file[0]);
                 fileObj.put("name", file[1]);
                 fileObj.put("type", file[2]);
-                fileObj.put("size", file[3]);
-                post.put("file", fileObj);
-            } else {
-                post.put("file", null);
+                files.add(fileObj);
             }
+            post.put("files", files);
 
             formattedResults.add(post);
         }
