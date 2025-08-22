@@ -28,7 +28,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, hideLayout = false })
       <Header isLoggedIn={isLoggedIn} username={username} avatar={avatar} />
       <div className="flex flex-1 w-full">
         <Sidebar />
-        <main className="flex-1 ml-64 mt-16 flex flex-col">
+        <main className="flex-1 mx-64 mt-16 flex flex-col">
           {children}
         </main>
       </div>
