@@ -15,6 +15,12 @@ import { useDispatch } from "react-redux";
 import CreatePost from "./CreatePost";
 import { useUser } from "../hooks/useUser";
 import { getCommentsTree } from "../api/comment";
+import PostImagesGallery from "./PostImagesGallery";
+import PostFilesList from "./PostFilesList";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+// Thêm Twemoji
+import twemoji from "twemoji";
 
 interface ContentProps {
   id: number;
@@ -184,31 +190,30 @@ const ContentPost: React.FC<ContentProps> = ({
   // Hiển thị tên người đăng: ưu tiên user_name từ backend
   const displayName = user_name || "Người dùng";
 
-  // Xử lý images: backend có thể trả về mảng string hoặc mảng object {url}
+  // Xử lý images: backend trả về mảng object {id, name, type}
   const displayImages = useMemo(() => {
     if (!images) return [];
     if (Array.isArray(images) && images.length > 0) {
-      if (typeof images[0] === "string") return images as string[];
-      if (typeof images[0] === "object" && images[0] !== null) {
-        return (images as any[]).map((img) => img.url || img.image_url).filter(Boolean);
-      }
+      return (images as any[]).map((img) => ({
+        url: `/api/posts/image/${img.id}`,
+        id: img.id,
+        name: img.name,
+        type: img.type,
+      }));
     }
     return [];
   }, [images]);
 
-  // Xử lý files: backend có thể trả về mảng string hoặc object {url, name}
+  // Xử lý files: backend trả về mảng object {id, name, type}
   const displayFiles = useMemo(() => {
     if (!files) return [];
     if (Array.isArray(files) && files.length > 0) {
-      if (typeof files[0] === "string") {
-        return (files as string[]).map((url) => ({ url, name: url }));
-      }
-      if (typeof files[0] === "object" && files[0] !== null) {
-        return (files as any[]).map((f) => ({
-          url: f.url || f.file_url,
-          name: f.name || f.file_name || f.url || f.file_url,
-        })).filter(f => !!f.url);
-      }
+      return (files as any[]).map((f) => ({
+        url: `/api/posts/file/${f.id}`,
+        name: f.name,
+        id: f.id,
+        type: f.type,
+      }));
     }
     return [];
   }, [files]);
@@ -249,6 +254,30 @@ const ContentPost: React.FC<ContentProps> = ({
       alert("Cập nhật bài viết thất bại!");
     }
   };
+
+  const markdownComponents = {
+    // Bỏ hỗ trợ gạch chân (ins, u)
+    ul: ({node, ...props}: any) => <ul className="pl-6 list-disc" {...props} />,
+    ol: ({node, ...props}: any) => <ol className="pl-6 list-decimal" {...props} />,
+    li: ({node, ...props}: any) => <li className="mb-1" {...props} />,
+    text: ({value}: any) => (
+      <span
+        dangerouslySetInnerHTML={{
+          __html: twemoji.parse(value, {
+            folder: "svg",
+            ext: ".svg",
+            className: "inline align-[-0.125em] w-5 h-5",
+            base: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/",
+          }),
+        }}
+      />
+    ),
+  };
+
+  // Helper: Đếm số dòng markdown (sau khi render)
+  function countMarkdownLines(md: string) {
+    return (md || "").split(/\r?\n/).length;
+  }
 
   return (
     <div className="relative w-full px-5 pt-5 pb-2 mt-6 bg-gray-200 shadow-sm rounded-xl">
@@ -373,13 +402,19 @@ const ContentPost: React.FC<ContentProps> = ({
       ) : (
         <>
           <div
-            className={`text-gray-800 mb-3 relative ${
+            className={`text-gray-800 mb-3 relative transition-all duration-200 ${
               !isExpanded ? "line-clamp-3 min-h-[36px] max-h-[72px] overflow-hidden" : ""
             }`}
             style={{ wordBreak: "break-word" }}
           >
-            {displayContent}
-            {!isExpanded && displayContent.length > 100 && (
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={markdownComponents}
+            >
+              {displayContent}
+            </ReactMarkdown>
+            {/* Hiện Read More nếu markdown có trên 3 dòng hoặc dài hơn 200 ký tự */}
+            {!isExpanded && (countMarkdownLines(displayContent) > 3 || (displayContent && displayContent.length > 200)) && (
               <span
                 className="absolute bottom-0 right-0 pl-2 text-blue-500 bg-gray-200 cursor-pointer hover:underline"
                 onClick={toggleReadMore}
@@ -390,38 +425,10 @@ const ContentPost: React.FC<ContentProps> = ({
           </div>
 
           {/* images gallery */}
-          {displayImages.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 mb-3 sm:grid-cols-3">
-              {displayImages.map((src, idx) => (
-                <a key={`post-img-${idx}`} href={src} target="_blank" rel="noreferrer">
-                  <img
-                    src={src}
-                    alt={`img-${idx}`}
-                    className="object-cover w-full h-40 border border-gray-300 rounded-lg"
-                    loading="lazy"
-                  />
-                </a>
-              ))}
-            </div>
-          )}
+          {displayImages.length > 0 && <PostImagesGallery images={displayImages} />}
 
           {/* files list */}
-          {displayFiles.length > 0 && (
-            <div className="mb-3">
-              {displayFiles.map((f, idx) => (
-                <div key={`post-file-${idx}`} className="flex items-center gap-2 text-sm">
-                  <a
-                    href={f.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-600 break-all hover:underline"
-                  >
-                    {f.name || f.url}
-                  </a>
-                </div>
-              ))}
-            </div>
-          )}
+          {displayFiles.length > 0 && <PostFilesList files={displayFiles} />}
 
           {isExpanded && (
             <Button onClick={toggleReadMore} className="text-blue-500 hover:text-blue-700">
@@ -486,7 +493,7 @@ const ContentPost: React.FC<ContentProps> = ({
               initialContent={displayContent}
               initialTagParent={displayParentTags[0] || "Thảo luận chung"}
               initialChildTags={displayChildTags}
-              initialImageUrls={displayImages}
+              initialImageUrls={displayImages.map(img => img.url)}
               initialDocUrls={displayFiles}
               onCancel={() => setIsEditing(false)}
               onSubmit={handleUpdate}

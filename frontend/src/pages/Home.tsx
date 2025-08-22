@@ -80,8 +80,10 @@ const Home: React.FC = () => {
           child_tags: p.child_tags ?? [],
           user_name: p.user_name,
           author_id: p.author_id,
-          images: p.images ?? p.image ? [p.image] : [],
-          files: p.files ?? p.file ? [p.file] : [],
+          // Lấy images từ trường image (object) nếu có
+          images: Array.isArray(p.images) ? p.images : [],
+          // Lấy files từ trường file (object) nếu có
+          files: Array.isArray(p.files) ? p.files : [],
         }));
 
         setPosts(mapped);
@@ -104,7 +106,7 @@ const Home: React.FC = () => {
       <ContentHeader title="Mới nhất" onCreate={() => setShowCreate(true)} />
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
-          <div className="w-full max-w-2xl">
+          <div className="w-full">
             <CreatePost
               onCancel={() => setShowCreate(false)}
               onSubmit={() => setShowCreate(false)}
