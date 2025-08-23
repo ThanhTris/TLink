@@ -738,4 +738,72 @@ public ApiResponseDTO getPostFileById(Long fileId) {
         return new ApiResponseDTO(false, "Lỗi khi lấy file: " + ex.getMessage(), null, "GET_FILE_ERROR");
     }
 }
+
+// Đếm tổng số bài viết cho home hoặc popular
+@Transactional(readOnly = true)
+public ApiResponseDTO countPostsHomePopular() {
+    try {
+        Object result = entityManager.createNativeQuery("CALL sp_count_posts_home_popular()").getSingleResult();
+        Long total = (result instanceof Number) ? ((Number) result).longValue() : 0L;
+        return new ApiResponseDTO(true, "Tổng số bài viết home/popular", total, null);
+    } catch (Exception ex) {
+        return new ApiResponseDTO(false, "Lỗi khi đếm bài viết home/popular: " + ex.getMessage(), null, "COUNT_HOME_POPULAR_ERROR");
+    }
+}
+
+// Đếm tổng số bài viết đã lưu của user
+@Transactional(readOnly = true)
+public ApiResponseDTO countPostsSaved(Long userId) {
+    try {
+        Object result = entityManager.createNativeQuery("CALL sp_count_posts_saved(?)")
+            .setParameter(1, userId)
+            .getSingleResult();
+        Long total = (result instanceof Number) ? ((Number) result).longValue() : 0L;
+        return new ApiResponseDTO(true, "Tổng số bài viết đã lưu", total, null);
+    } catch (Exception ex) {
+        return new ApiResponseDTO(false, "Lỗi khi đếm bài viết đã lưu: " + ex.getMessage(), null, "COUNT_SAVED_ERROR");
+    }
+}
+
+// Đếm tổng số bài viết theo tag cha
+@Transactional(readOnly = true)
+public ApiResponseDTO countPostsByParentTag(String parentTag) {
+    try {
+        Object result = entityManager.createNativeQuery("CALL sp_count_posts_by_parent_tag(?)")
+            .setParameter(1, parentTag)
+            .getSingleResult();
+        Long total = (result instanceof Number) ? ((Number) result).longValue() : 0L;
+        return new ApiResponseDTO(true, "Tổng số bài viết theo tag cha", total, null);
+    } catch (Exception ex) {
+        return new ApiResponseDTO(false, "Lỗi khi đếm bài viết theo tag cha: " + ex.getMessage(), null, "COUNT_PARENT_TAG_ERROR");
+    }
+}
+
+// Đếm tổng số bài viết theo tag con
+@Transactional(readOnly = true)
+public ApiResponseDTO countPostsByChildTag(String childTag) {
+    try {
+        Object result = entityManager.createNativeQuery("CALL sp_count_posts_by_child_tag(?)")
+            .setParameter(1, childTag)
+            .getSingleResult();
+        Long total = (result instanceof Number) ? ((Number) result).longValue() : 0L;
+        return new ApiResponseDTO(true, "Tổng số bài viết theo tag con", total, null);
+    } catch (Exception ex) {
+        return new ApiResponseDTO(false, "Lỗi khi đếm bài viết theo tag con: " + ex.getMessage(), null, "COUNT_CHILD_TAG_ERROR");
+    }
+}
+
+// Đếm tổng số bài viết theo từ khóa tìm kiếm
+@Transactional(readOnly = true)
+public ApiResponseDTO countPostsBySearch(String keyword) {
+    try {
+        Object result = entityManager.createNativeQuery("CALL sp_count_posts_by_search(?)")
+            .setParameter(1, keyword)
+            .getSingleResult();
+        Long total = (result instanceof Number) ? ((Number) result).longValue() : 0L;
+        return new ApiResponseDTO(true, "Tổng số bài viết theo tìm kiếm", total, null);
+    } catch (Exception ex) {
+        return new ApiResponseDTO(false, "Lỗi khi đếm bài viết theo tìm kiếm: " + ex.getMessage(), null, "COUNT_SEARCH_ERROR");
+    }
+}
 }

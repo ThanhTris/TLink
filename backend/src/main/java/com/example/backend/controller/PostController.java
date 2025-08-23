@@ -266,4 +266,44 @@ public ResponseEntity<ApiResponseDTO> uploadImage(
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status).body(response);
     }
+
+    // API: Đếm tổng số bài viết cho home hoặc popular
+    @GetMapping("/count/home-popular")
+    public ResponseEntity<ApiResponseDTO> countPostsHomePopular() {
+        ApiResponseDTO response = postService.countPostsHomePopular();
+        HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(response);
+    }
+
+    // API: Đếm tổng số bài viết đã lưu của user
+    @GetMapping("/count/saved")
+    public ResponseEntity<ApiResponseDTO> countPostsSaved(@RequestParam Long userId) {
+        ApiResponseDTO response = postService.countPostsSaved(userId);
+        HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(response);
+    }
+
+    // API: Đếm tổng số bài viết theo tag cha
+    @GetMapping("/count/parent-tag")
+    public ResponseEntity<ApiResponseDTO> countPostsByParentTag(@RequestParam String parentTag) {
+        ApiResponseDTO response = postService.countPostsByParentTag(parentTag);
+        HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(response);
+    }
+
+    // API: Đếm tổng số bài viết theo tag con
+    @GetMapping("/count/child-tag")
+    public ResponseEntity<ApiResponseDTO> countPostsByChildTag(@RequestParam String childTag) {
+        ApiResponseDTO response = postService.countPostsByChildTag(childTag);
+        HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(response);
+    }
+
+    // API: Đếm tổng số bài viết theo từ khóa tìm kiếm
+    @GetMapping("/count/search")
+    public ResponseEntity<ApiResponseDTO> countPostsBySearch(@RequestParam String keyword) {
+        ApiResponseDTO response = postService.countPostsBySearch(keyword);
+        HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(response);
+    }
 }
