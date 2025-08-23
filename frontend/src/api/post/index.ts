@@ -102,4 +102,29 @@ export async function searchPosts(keyword: string, limit: number = 10, offset: n
   });
 }
 
+// API lấy tổng số bài viết cho home/popular
+export async function countPostsHomePopular() {
+  return axios.get("/api/posts/count/home-popular");
+}
+
+// API lấy tổng số bài viết đã lưu của user
+export async function countPostsSaved(userId: number) {
+  return axios.get("/api/posts/count/saved", { params: { userId } });
+}
+
+// API lấy tổng số bài viết theo tag cha
+export async function countPostsByParentTag(parentTag: string) {
+  return axios.get("/api/posts/count/parent-tag", { params: { parentTag } });
+}
+
+// API lấy tổng số bài viết theo tag con
+export async function countPostsByChildTag(childTag: string) {
+  return axios.get("/api/posts/count/child-tag", { params: { childTag } });
+}
+
+// API lấy tổng số bài viết theo từ khóa tìm kiếm
+export async function countPostsBySearch(keyword: string) {
+  return axios.get("/api/posts/count/search", { params: { keyword } });
+}
+
 // Không cần sửa gì ở đây
