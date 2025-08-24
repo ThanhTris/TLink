@@ -270,7 +270,7 @@ const Login: React.FC = () => {
         {/* GoogleOAuthProvider should be at a higher level (App.tsx/main.tsx), not here.
             But for page-level demo, you can wrap just this button: */}
         <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-          <div className="mb-6">
+          <div className="mb-4">
             <GoogleLogin
               onSuccess={handleGoogleLoginSuccess}
               onError={handleGoogleLoginFailure}
@@ -278,13 +278,11 @@ const Login: React.FC = () => {
           </div>
         </GoogleOAuthProvider>
         <Button
-          className="flex items-center justify-center w-full gap-2 p-3 border rounded"
+          className="flex items-center w-full px-4 py-2 mb-2 bg-white hover:bg-gray-100 rounded shadow-none border border-gray-300  h-11"
           onClick={handleFacebookLogin}
         >
           <img src={facebook} alt="Facebook" className="w-5 h-5" />
-          <span className="inline-block w-40 text-center">
-            Login with Facebook
-          </span>
+          <span className="ml-2 flex-1">Đăng nhập bằng Facebook</span>
         </Button>
       </div>
       {toast && (
