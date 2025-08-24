@@ -1,6 +1,7 @@
 import React from "react";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
+import SidebarRecommendation from "../components/SidebarRecommendations";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -28,8 +29,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, hideLayout = false })
       <Header isLoggedIn={isLoggedIn} username={username} avatar={avatar} />
       <div className="flex flex-1 w-full">
         <Sidebar />
-        <main className="flex-1 mx-64 mt-16 flex flex-col">
-          {children}
+        {/* Thêm sidebar gợi ý bên phải, tách khỏi main content */}
+        <main className="flex-1 ml-64 mr-70 mt-16 flex flex-row gap-8">
+          <div className="flex-1 flex flex-col">
+            {children}
+          </div>
+          
+            <SidebarRecommendation userId={user?.id} />
+        
         </main>
       </div>
     </div>
