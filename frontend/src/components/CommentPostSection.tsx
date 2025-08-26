@@ -41,6 +41,7 @@ interface CommentSectionProps {
   onAddComment: (content: string) => void;
   currentUser: string;
   post_id: number;
+  showReplyBox?: boolean; // thêm prop này
 }
 const avatar = "https://i.pinimg.com/736x/86/78/44/867844ee7058d9bb79afb30dcb4a96ed.jpg";
 const CommentPostSection: React.FC<CommentSectionProps> = ({
@@ -48,6 +49,7 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
   onAddComment,
   currentUser,
   post_id,
+  showReplyBox = true, // mặc định true
 }) => {
   const user = useUser();
   const currentUserId = user.id;
@@ -384,16 +386,18 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
   return (
     <div className="mb-6 ml-4">
       {comments.map((comment) => renderComment(comment))}
-      <div className="mt-4">
-        <ReplyIteam
-          level={1}
-          currentUserAvatar={user.avatar ?? avatar}
-          value={newComment}
-          placeholder="Viết bình luận của bạn..."
-          onChange={(v) => setNewComment(v)}
-          onSubmit={addComment}
-        />
-      </div>
+      {showReplyBox && (
+        <div className="mt-4">
+          <ReplyIteam
+            level={1}
+            currentUserAvatar={user.avatar ?? avatar}
+            value={newComment}
+            placeholder="Viết bình luận của bạn..."
+            onChange={(v) => setNewComment(v)}
+            onSubmit={addComment}
+          />
+        </div>
+      )}
     </div>
   );
 };
