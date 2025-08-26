@@ -3,12 +3,13 @@ import { Heart } from "lucide-react";
 import Button from "./Button";
 import ReplyIteam from "./ReplyIteam";
 import { getInfoUserById } from "../api/user"; // Thêm import này
+import { getTimeAgo, formatDateTimeVN } from "../utils/timeAgo";
 
 interface CommentIteamProps {
   avatar: string;
   id: number;
   name: string;
-  createdAt: Date;
+  createdAt: string;
   content: string;
   like_count: number;
   is_like: boolean;
@@ -143,8 +144,8 @@ const CommentIteam: React.FC<CommentIteamProps> = ({
             <div className="flex-1">
               <div className="flex items-center">
                 <span className="font-semibold">{name}</span>
-                <span className="ml-2 text-xs text-gray-500">
-                  {createdAt.toLocaleString()}
+                <span className="ml-2 text-xs text-gray-500" title={formatDateTimeVN(createdAt)}>
+                  {getTimeAgo(createdAt)}
                 </span>
               </div>
             </div>

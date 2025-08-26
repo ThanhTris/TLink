@@ -27,7 +27,7 @@ interface FEComment {
   parent_id: number | null;
   level: number;
   content: string;
-  createdAt: Date;
+  createdAt: string; // sửa lại thành string
   like_count: number;
   is_liked: boolean;
   replies?: FEComment[];
@@ -85,6 +85,7 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
 
   // Hàm map comment lấy mentionName nếu có, tối ưu lấy info tác giả
   const mapCommentWithMentionName = async (c: any) => {
+    console.log("mapCommentWithMentionName called for id:", c.id); // Thêm log này để kiểm tra hàm có chạy không
     let name: string = c.author_name;
     let avatar: string = c.author_avatar;
     // Nếu là comment của user hiện tại, lấy từ local FE
@@ -123,7 +124,7 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
       parent_id: c.parent_id,
       level: c.level,
       content: c.content,
-      createdAt: new Date(c.created_at),
+      createdAt: c.created_at, // giữ nguyên là string
       like_count: c.likes_count ?? 0,
       is_liked: c.is_liked ?? false,
       mention_user_id: c.mention_user_id ?? null,
@@ -140,6 +141,7 @@ const CommentPostSection: React.FC<CommentSectionProps> = ({
         const data = (res as any).data?.data || [];
         console.log("Fetched comments:", data);
         const mapped: FEComment[] = await Promise.all(data.map(mapCommentWithMentionName));
+        console.log("All mapped comments:", mapped); // Thêm log này để kiểm tra kết quả cuối cùng
         setFlatComments(mapped);
       } catch (e) {
         setFlatComments([]);
