@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import ContentHeader from "../components/ContentHeader";
 import CreatePost from "../components/CreatePost";
 import ContentPost from "../components/ContentPost";
+import SidebarRecommendations from "../components/SidebarRecommendations";
+import PostModal from "../components/PostModal";
 import {
   getPostsByCategory,
   countPostsHomePopular,
@@ -37,6 +39,7 @@ const Home: React.FC = () => {
   const [posts, setPosts] = useState<FEPost[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
 
   // Phân trang
   const [totalPosts, setTotalPosts] = useState<number>(0);
@@ -257,6 +260,17 @@ const Home: React.FC = () => {
             </>
           )}
         </div>
+      )}
+      <SidebarRecommendations
+        userId={user.id}
+        onItemClick={(postId) => setSelectedPostId(postId)}
+      />
+      {selectedPostId !== null && (
+        <PostModal
+          postId={selectedPostId}
+          open={selectedPostId !== null}
+          onClose={() => setSelectedPostId(null)}
+        />
       )}
     </div>
   );

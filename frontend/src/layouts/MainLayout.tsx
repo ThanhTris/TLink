@@ -1,7 +1,6 @@
 import React from "react";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
-import SidebarRecommendation from "../components/SidebarRecommendations";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -34,9 +33,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, hideLayout = false })
           <div className="flex-1 flex flex-col">
             {children}
           </div>
-          
-            <SidebarRecommendation userId={user?.id} />
-        
         </main>
       </div>
     </div>

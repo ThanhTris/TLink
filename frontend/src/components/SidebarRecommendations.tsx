@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import RecommendationItem from "./RecommendationItem";
 import { getPostsByCategory } from "../api/post";
-import PostModal from "./PostModal";
 
 interface SidebarRecommendationProps {
   userId?: number;
@@ -22,7 +21,6 @@ const SidebarRecommendations: React.FC<SidebarRecommendationProps> = ({
   onItemClick,
 }) => {
   const [posts, setPosts] = useState<Post[]>([]);
-  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -59,16 +57,9 @@ const SidebarRecommendations: React.FC<SidebarRecommendationProps> = ({
             ...(post.parent_tags || []),
             ...(post.child_tags || []),
           ]}
-          onClick={() => setSelectedPostId(post.id)}
+          onClick={() => onItemClick?.(post.id)}
         />
       ))}
-      {selectedPostId !== null && (
-        <PostModal
-          postId={selectedPostId}
-          open={selectedPostId !== null}
-          onClose={() => setSelectedPostId(null)}
-        />
-      )}
     </aside>
   );
 };
