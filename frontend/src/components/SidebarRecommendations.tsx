@@ -27,7 +27,7 @@ const SidebarRecommendations: React.FC<SidebarRecommendationProps> = ({
   useEffect(() => {
     (async () => {
       try {
-        const res: any = await getPostsByCategory("/home", 5, 0, userId);
+        const res: any = await getPostsByCategory("/popular", 5, 0, userId);
         // Sửa lỗi typescript: ép kiểu any cho res, kiểm tra kỹ mảng
         const data: Post[] = Array.isArray(res && res.data && res.data.data) ? res.data.data : [];
         setPosts(data);

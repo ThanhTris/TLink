@@ -468,36 +468,35 @@ const ContentPost: React.FC<ContentProps> = ({
 
       {/* Form chỉnh sửa (modal overlay) */}
       {isEditing && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50"
-          onClick={() => setIsEditing(false)}
-        >
-          <div
-            className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-xl bg-white shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Button
-              onClick={() => setIsEditing(false)}
-              className="absolute p-2 text-gray-600 rounded-full top-3 right-3 hover:bg-gray-100"
-              title="Đóng"
-              aria-label="Đóng"
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
+          <div className="w-full max-w-3xl">
+            <div
+              className="relative bg-white rounded-xl shadow-xl max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
             >
-              <X size={18} />
-            </Button>
-            <CreatePost
-              mode="edit"
-              postId={id} // Thêm dòng này để truyền postId khi chỉnh sửa
-              heading="Chỉnh sửa bài viết"
-              submitLabel="Cập nhật"
-              initialTitle={displayTitle}
-              initialContent={displayContent}
-              initialTagParent={displayParentTags[0] || "Thảo luận chung"}
-              initialChildTags={displayChildTags}
-              initialImageUrls={displayImages.map(img => img.url)}
-              initialDocUrls={displayFiles}
-              onCancel={() => setIsEditing(false)}
-              onSubmit={handleUpdate}
-            />
+              <Button
+                onClick={() => setIsEditing(false)}
+                className="absolute p-2 text-gray-600 rounded-full top-3 right-3 hover:bg-gray-100"
+                title="Đóng"
+                aria-label="Đóng"
+              >
+                <X size={18} />
+              </Button>
+              <CreatePost
+                mode="edit"
+                postId={id}
+                heading="Chỉnh sửa bài viết"
+                submitLabel="Cập nhật"
+                initialTitle={displayTitle}
+                initialContent={displayContent}
+                initialTagParent={displayParentTags[0] || "Thảo luận chung"}
+                initialChildTags={displayChildTags}
+                initialImageUrls={displayImages.map(img => img.url)}
+                initialDocUrls={displayFiles}
+                onCancel={() => setIsEditing(false)}
+                onSubmit={handleUpdate}
+              />
+            </div>
           </div>
         </div>
       )}
