@@ -436,7 +436,7 @@ const ContentPost: React.FC<ContentProps> = ({
             </Button>
           )}
 
-          <div className="flex gap-6 mb-3 text-sm text-gray-500">
+          <div className="flex items-center py-3 my-3 text-sm text-gray-500 border-t border-b border-gray-300 gap-15 ">
             <Button
               className={`flex items-center gap-1 cursor-pointer focus:outline-none ${
                 liked ? "text-red-500 hover:text-red-600" : "text-gray-600 hover:text-gray-800"
