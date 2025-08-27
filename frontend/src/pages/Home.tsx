@@ -11,6 +11,7 @@ import {
 import { parseMySQLDateVN } from "../utils/timeAgo";
 import { useUser } from "../hooks/useUser";
 import Toast from "../components/Toast";
+import { getCommentsTree } from "../api/comment";
 
 type FEPost = {
   id: number;
@@ -40,6 +41,7 @@ const Home: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
+  const [commentsMap, setCommentsMap] = useState<Record<number, any[]>>({});
 
   // Phân trang
   const [totalPosts, setTotalPosts] = useState<number>(0);
@@ -63,7 +65,7 @@ const Home: React.FC = () => {
     return () => { mounted = false; };
   }, []);
 
-  // Lấy bài viết theo trang
+  // Lấy bài viết theo trang, chỉ load comment sau khi đã setPosts xong
   const fetchPosts = async (page: number) => {
     try {
       setLoading(true);
@@ -83,6 +85,7 @@ const Home: React.FC = () => {
       }
       if (!data || data.length === 0) {
         setPosts([]);
+        setCommentsMap({});
         return;
       }
       const mapped: FEPost[] = data.map((p) => ({
@@ -102,8 +105,25 @@ const Home: React.FC = () => {
         files: Array.isArray(p.files) ? p.files : [],
       }));
       setPosts(mapped);
+
+      // Sau khi setPosts xong mới load comment tree cho từng bài viết
+      setTimeout(async () => {
+        const commentsObj: Record<number, any[]> = {};
+        await Promise.all(
+          mapped.map(async (post) => {
+            try {
+              const res = await getCommentsTree(post.id, userId);
+              commentsObj[post.id] = (res as any).data?.data || [];
+            } catch {
+              commentsObj[post.id] = [];
+            }
+          })
+        );
+        setCommentsMap(commentsObj);
+      }, 0);
     } catch (e: any) {
       setError(e?.message || "Không tải được bài viết");
+      setCommentsMap({});
     } finally {
       setLoading(false);
     }
@@ -200,7 +220,7 @@ const Home: React.FC = () => {
             {...post}
             is_saved={post.is_saved}
             is_liked={post.is_liked}
-            initialComments={[]}
+            initialComments={commentsMap[post.id] || []}
           />
         ))}
       {/* Phân trang */}
