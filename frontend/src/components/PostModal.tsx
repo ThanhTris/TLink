@@ -73,6 +73,20 @@ const PostModal: React.FC<PostModalProps> = ({ postId, open, onClose }) => {
     // TODO: Gọi API like/unlike post ở đây nếu cần
   };
 
+  // Đóng modal khi click ra ngoài vùng modal
+  React.useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      // Nếu click vào overlay (không phải modal content)
+      const modal = document.getElementById("post-modal-content");
+      if (modal && !modal.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   // Defensive: avoid error if post is null or created_at is undefined
@@ -151,6 +165,7 @@ const PostModal: React.FC<PostModalProps> = ({ postId, open, onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div
+        id="post-modal-content"
         className="relative w-3xl max-h-[90vh] bg-white rounded-xl shadow-xl flex flex-col overflow-hidden pointer-events-auto"
         onClick={(e) => e.stopPropagation()}>
         {/* Header */}
