@@ -436,9 +436,9 @@ const ContentPost: React.FC<ContentProps> = ({
             </Button>
           )}
 
-          <div className="flex items-center py-3 my-3 text-sm text-gray-500 border-t border-b border-gray-300 gap-15 ">
+          <div className="flex items-center my-3 text-sm text-gray-500 border-t border-b border-gray-300 gap-15 ">
             <Button
-              className={`flex items-center gap-1 cursor-pointer focus:outline-none ${
+              className={`flex items-center gap-1 cursor-pointer focus:outline-none transition bg-transparent hover:bg-gray-50 px-4 py-3 rounded ${
                 liked ? "text-red-500 hover:text-red-600" : "text-gray-600 hover:text-gray-800"
               }`}
               onClick={handleLike}
@@ -447,7 +447,7 @@ const ContentPost: React.FC<ContentProps> = ({
               {likeCount} Thích
             </Button>
             <Button
-              className="flex items-center gap-1 cursor-pointer focus:outline-none"
+              className="flex items-center gap-1 cursor-pointer focus:outline-none transition bg-transparent hover:bg-gray-50 px-4 py-3 rounded"
               onClick={toggleComments}
             >
               <MessageCircle size={16} />
