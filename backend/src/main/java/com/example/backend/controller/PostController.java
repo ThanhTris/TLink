@@ -306,4 +306,17 @@ public ResponseEntity<ApiResponseDTO> uploadImage(
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status).body(response);
     }
+
+    // API: Đề xuất bài viết cho user
+    @GetMapping("/recommend")
+    public ResponseEntity<ApiResponseDTO> getRecommendedPosts(
+            @RequestParam Long userId,
+            @RequestParam(defaultValue = "5") int limit,
+            @RequestParam(defaultValue = "0") int offset
+    ) {
+        // SP sẽ luôn trả về tối đa 5 bài viết mới nhất
+        ApiResponseDTO response = postService.getRecommendedPosts(userId, limit, offset);
+        HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+        return ResponseEntity.status(status).body(response);
+    }
 }

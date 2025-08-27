@@ -333,6 +333,10 @@ public class PostService {
     @Transactional
     public ApiResponseDTO searchPosts(String keyword, Integer limit, Integer offset, Long userId) {
         try {
+            // Tracking hành vi tìm kiếm (upsert)
+            if (userId != null && keyword != null && !keyword.trim().isEmpty()) {
+                trackUserSearch(userId, keyword);
+            }
             // Gọi stored procedure mới
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_search_posts");
             query.registerStoredProcedureParameter(1, String.class, jakarta.persistence.ParameterMode.IN); // p_keyword
@@ -350,6 +354,144 @@ public class PostService {
             return new ApiResponseDTO(true, "Tìm kiếm bài viết thành công", formattedResults, null);
         } catch (Exception ex) {
             return new ApiResponseDTO(false, "Lỗi khi tìm kiếm bài viết: " + ex.getMessage(), null, "SEARCH_POST_ERROR");
+        }
+    }
+
+    // Đề xuất bài viết dựa trên hành vi người dùng (luôn trả về tối đa 5 bài mới nhất)
+    @Transactional 
+    public ApiResponseDTO getRecommendedPosts(Long userId, int limit, int offset) {
+        try {
+            // SP sẽ override limit thành 5, nên truyền gì cũng được
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_get_recommended_posts");
+            query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(2, Integer.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(3, Integer.class, jakarta.persistence.ParameterMode.IN);
+
+            query.setParameter(1, userId);
+            query.setParameter(2, 5); // truyền 5 cho rõ ràng, SP sẽ override
+            query.setParameter(3, offset);
+
+            List<Object[]> results = query.getResultList();
+            List<Map<String, Object>> formattedResults = convertPostsToKeyValue(results, userId);
+            return new ApiResponseDTO(true, "Đề xuất bài viết thành công", formattedResults, null);
+        } catch (Exception ex) {
+            String message = extractRootCauseMessage(ex);
+            return new ApiResponseDTO(false, "Lỗi khi đề xuất bài viết: " + message, null, "RECOMMEND_POST_ERROR");
+        }
+    }
+
+    // Ghi nhận hành vi tìm kiếm của user (upsert vào bảng tracking)
+    @Transactional
+    public void trackUserSearch(Long userId, String keyword) {
+        try {
+            StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_track_user_search");
+            query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN);
+            query.registerStoredProcedureParameter(2, String.class, jakarta.persistence.ParameterMode.IN);
+            query.setParameter(1, userId);
+            query.setParameter(2, keyword);
+            query.execute();
+        } catch (Exception ex) {
+            // Không throw lỗi, chỉ log nếu cần
+            System.err.println("Track user search failed: " + ex.getMessage());
+        }
+    }
+
+    // Lấy thông tin chi tiết bài viết (bao gồm ảnh/file) - dùng cho trang chi tiết bài viết
+    @Transactional(readOnly = true)
+    public ApiResponseDTO getPostDetail(Long postId, Long userId) {
+        try {
+            // Kiểm tra postId có tồn tại không
+            if (!postRepository.existsById(postId)) {
+                return new ApiResponseDTO(false, "Bài viết không tồn tại", null, "POST_NOT_FOUND");
+            }
+
+            // Lấy thông tin bài viết
+            String postSql = "SELECT id, title, content, author_id, created_at, updated_at, " +
+                    " (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) as likes_count, " +
+                    " (SELECT COUNT(*) FROM post_comments WHERE post_id = p.id) as comment_count, " +
+                    " (SELECT GROUP_CONCAT(tag_id) FROM post_tags WHERE post_id = p.id) as tag_ids_csv " +
+                    "FROM posts p WHERE id = :postId";
+            Object postObj = entityManager.createNativeQuery(postSql)
+                    .setParameter("postId", postId)
+                    .getSingleResult();
+
+            if (postObj == null) {
+                return new ApiResponseDTO(false, "Bài viết không tồn tại", null, "POST_NOT_FOUND");
+            }
+
+            Object[] postRow = (Object[]) postObj;
+            Map<String, Object> post = new HashMap<>();
+            post.put("id", postRow[0]);
+            post.put("title", postRow[1]);
+            post.put("content", postRow[2]);
+            post.put("author_id", postRow[3]);
+            post.put("created_at", postRow[4]);
+            post.put("updated_at", postRow[5]);
+            post.put("likes_count", postRow[6]);
+            post.put("comment_count", postRow[7]);
+
+            // Lấy thông tin tác giả
+            Long authorId = (Long) postRow[3];
+            String authorSql = "SELECT id, name, avatar FROM users WHERE id = :authorId";
+            Object authorObj = entityManager.createNativeQuery(authorSql)
+                    .setParameter("authorId", authorId)
+                    .getSingleResult();
+            if (authorObj != null) {
+                Object[] authorRow = (Object[]) authorObj;
+                Map<String, Object> author = new HashMap<>();
+                author.put("id", authorRow[0]);
+                author.put("name", authorRow[1]);
+                author.put("avatar", authorRow[2]);
+                post.put("author", author);
+            }
+
+            // Lấy danh sách ảnh
+            String imagesSql = "SELECT id, image_name, image_type FROM posts_image WHERE post_id = :postId ORDER BY id ASC";
+            List<Object[]> imageResults = entityManager.createNativeQuery(imagesSql)
+                    .setParameter("postId", postId)
+                    .getResultList();
+            List<Map<String, Object>> images = new ArrayList<>();
+            for (Object[] img : imageResults) {
+                Map<String, Object> imageObj = new HashMap<>();
+                imageObj.put("id", img[0]);
+                imageObj.put("name", img[1]);
+                imageObj.put("type", img[2]);
+                images.add(imageObj);
+            }
+            post.put("images", images);
+
+            // Lấy danh sách file
+            String filesSql = "SELECT id, file_name, file_type FROM posts_file WHERE post_id = :postId ORDER BY id ASC";
+            List<Object[]> fileResults = entityManager.createNativeQuery(filesSql)
+                    .setParameter("postId", postId)
+                    .getResultList();
+            List<Map<String, Object>> files = new ArrayList<>();
+            for (Object[] file : fileResults) {
+                Map<String, Object> fileObj = new HashMap<>();
+                fileObj.put("id", file[0]);
+                fileObj.put("name", file[1]);
+                fileObj.put("type", file[2]);
+                files.add(fileObj);
+            }
+            post.put("files", files);
+
+            // Kiểm tra đã like bài viết chưa
+            boolean isLiked = entityManager.createNativeQuery("SELECT COUNT(*) FROM post_likes WHERE post_id = :postId AND liker_id = :userId")
+                    .setParameter("postId", postId)
+                    .setParameter("userId", userId)
+                    .getSingleResult() != null;
+            post.put("is_liked", isLiked);
+
+            // Kiểm tra đã lưu bài viết chưa
+            boolean isSaved = entityManager.createNativeQuery("SELECT COUNT(*) FROM saved_posts WHERE post_id = :postId AND user_id = :userId")
+                    .setParameter("postId", postId)
+                    .setParameter("userId", userId)
+                    .getSingleResult() != null;
+            post.put("is_saved", isSaved);
+
+            return new ApiResponseDTO(true, "Lấy chi tiết bài viết thành công", post, null);
+        } catch (Exception ex) {
+            return new ApiResponseDTO(false, "Lỗi khi lấy chi tiết bài viết: " + ex.getMessage(), null, "GET_POST_DETAIL_ERROR");
         }
     }
 
