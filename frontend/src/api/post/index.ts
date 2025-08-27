@@ -127,4 +127,15 @@ export async function countPostsBySearch(keyword: string) {
   return axios.get("/api/posts/count/search", { params: { keyword } });
 }
 
+// API lấy bài viết đề xuất cho user (recommend)
+export async function getRecommendedPosts(userId?: number, limit: number = 5, offset: number = 0) {
+  return axios.get("/api/posts/recommend", {
+    params: {
+      userId,
+      limit,
+      offset,
+    },
+  });
+}
+
 // Không cần sửa gì ở đây

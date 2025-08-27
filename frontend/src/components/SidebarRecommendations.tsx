@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import RecommendationItem from "./RecommendationItem";
-import { getPostsByCategory } from "../api/post";
+// import { getPostsByCategory } from "../api/post";
+import { getRecommendedPosts } from "../api/post"; // <-- Thêm hàm này
 
 interface SidebarRecommendationProps {
   userId?: number;
@@ -25,9 +26,11 @@ const SidebarRecommendations: React.FC<SidebarRecommendationProps> = ({
   useEffect(() => {
     (async () => {
       try {
-        const res: any = await getPostsByCategory("/popular", 5, 0, userId);
-        // Sửa lỗi typescript: ép kiểu any cho res, kiểm tra kỹ mảng
+        // Gọi API đề xuất bài viết cho user
+        const res: any = await getRecommendedPosts(userId, 5, 0);
+        // Kết quả trả về: res.data.data là mảng bài viết
         const data: Post[] = Array.isArray(res && res.data && res.data.data) ? res.data.data : [];
+        console.log("Recommended posts:", data);
         setPosts(data);
       } catch {
         setPosts([]);
