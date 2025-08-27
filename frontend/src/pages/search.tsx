@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import ContentHeader from "../components/ContentHeader";
 import ContentPost from "../components/ContentPost";
+import SidebarRecommendations from "../components/SidebarRecommendations";
 import { searchPosts } from "../api/post";
 import { parseMySQLDateVN } from "../utils/timeAgo";
 import { useUser } from "../hooks/useUser";
 import { useSearchParams } from "react-router-dom";
+import PostModal from "../components/PostModal";
 
 type FEPost = {
   id: number;
@@ -33,12 +35,14 @@ const Search: React.FC = () => {
   const [posts, setPosts] = useState<FEPost[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPostId, setSelectedPostId] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
         setLoading(true);
+        setError(null);
         const userId = user.id;
         const res = await searchPosts(keyword, 10, 0, userId || undefined);
         const { success, message, data } = res.data as { success: boolean; message?: string; data?: any[] };
@@ -47,25 +51,28 @@ const Search: React.FC = () => {
           setPosts([]);
           return;
         }
+        // Chuẩn hóa dữ liệu giống trang Home
         const mapped: FEPost[] = data.map((p: any) => ({
           id: Number(p.id),
           title: p.title ?? "",
           content: p.content ?? "",
           likes_count: Number(p.likes_count ?? 0),
           comment_count: Number(p.comment_count ?? 0),
-          is_saved: p.is_saved ?? false,
-          is_liked: p.is_liked ?? false,
+          is_saved: !!p.is_saved,
+          is_liked: !!p.is_liked,
           created_at: toDate(p.created_at),
-          parent_tags: p.parent_tags ?? [],
-          child_tags: p.child_tags ?? [],
+          parent_tags: Array.isArray(p.parent_tags) ? p.parent_tags : [],
+          child_tags: Array.isArray(p.child_tags) ? p.child_tags : [],
           user_name: p.user_name,
+          user_avatar: p.user_avatar,
           author_id: p.author_id,
-          images: p.images ?? p.image ? [p.image] : [],
-          files: p.files ?? p.file ? [p.file] : [],
+          images: Array.isArray(p.images) ? p.images : [],
+          files: Array.isArray(p.files) ? p.files : [],
         }));
         if (mounted) setPosts(mapped);
       } catch (e: any) {
         if (mounted) setError(e?.message || "Không tìm được bài viết");
+        // eslint-disable-next-line no-console
         console.error("Error searching posts:", e);
       } finally {
         if (mounted) setLoading(false);
@@ -78,7 +85,7 @@ const Search: React.FC = () => {
 
   return (
     <div className="px-16 py-8">
-      <ContentHeader title={`Kết quả tìm kiếm: "${keyword}"`} />
+      <ContentHeader title={`về "${keyword}"`} />
       {loading && <div>Đang tải...</div>}
       {!loading && !error && posts.length === 0 && (
         <div className="text-gray-500 italic">Không có bài viết nào phù hợp</div>
@@ -90,6 +97,18 @@ const Search: React.FC = () => {
         posts.map((post) => (
           <ContentPost key={post.id} {...post} initialComments={[]} />
         ))}
+      <SidebarRecommendations
+        userId={user.id}
+        onItemClick={(postId) => setSelectedPostId(postId)}
+      />
+      {/* Nếu muốn mở modal bài viết khi click gợi ý, có thể dùng PostModal như trang home */}
+      {selectedPostId !== null && (
+        <PostModal
+          postId={selectedPostId}
+          open={selectedPostId !== null}
+          onClose={() => setSelectedPostId(null)}
+        />
+      )}
     </div>
   );
 };
