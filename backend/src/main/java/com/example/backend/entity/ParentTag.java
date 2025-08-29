@@ -16,11 +16,11 @@ public class ParentTag {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "code", unique = true, nullable = false, length = 50)
+    private String code;
+
     @Column(name = "name", unique = true, nullable = false, length = 100)
     private String name;
-
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
 
     @OneToMany(mappedBy = "parentTag", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ChildTag> childTags;
