@@ -51,6 +51,7 @@ public class PostController {
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(required = false) Long userId // truyền userId để kiểm tra is_liked, is_saved
     ) {
+        // categoryPath là code hoặc path FE (ví dụ: /general, /general/intro, dev, web, ...)
         ApiResponseDTO response = postService.getPostsByCategory(categoryPath, limit, offset, userId);
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status).body(response);
@@ -286,6 +287,7 @@ public ResponseEntity<ApiResponseDTO> uploadImage(
     // API: Đếm tổng số bài viết theo tag cha
     @GetMapping("/count/parent-tag")
     public ResponseEntity<ApiResponseDTO> countPostsByParentTag(@RequestParam String parentTag) {
+        // parentTag là code
         ApiResponseDTO response = postService.countPostsByParentTag(parentTag);
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status).body(response);
@@ -294,6 +296,7 @@ public ResponseEntity<ApiResponseDTO> uploadImage(
     // API: Đếm tổng số bài viết theo tag con
     @GetMapping("/count/child-tag")
     public ResponseEntity<ApiResponseDTO> countPostsByChildTag(@RequestParam String childTag) {
+        // childTag là code
         ApiResponseDTO response = postService.countPostsByChildTag(childTag);
         HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
         return ResponseEntity.status(status).body(response);

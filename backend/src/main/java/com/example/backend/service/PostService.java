@@ -48,53 +48,54 @@ public class PostService {
     @Transactional
     public ApiResponseDTO createPost(PostCreateRequestDTO request) {
         try {
-            // Map parentTag name to id
+            // Map parentTag code to id
             Long parentTagId = null;
             if (request.getParentTag() != null && !request.getParentTag().isEmpty()) {
-                List<?> ids = entityManager.createNativeQuery("SELECT id FROM parent_tags WHERE name = :name")
-                        .setParameter("name", request.getParentTag())
+                List<?> ids = entityManager.createNativeQuery("SELECT id FROM parent_tags WHERE code = :code")
+                        .setParameter("code", request.getParentTag())
                         .getResultList();
                 if (!ids.isEmpty()) {
                     parentTagId = ((Number) ids.get(0)).longValue();
                 }
             }
-            // Map childTags name list to CSV id string
+            // Map childTags code list to CSV id string
             String childTagIdsCsv = "";
             if (request.getChildTags() != null && !request.getChildTags().isEmpty()) {
                 List<String> tags = request.getChildTags();
                 Long parentTagIdForChild = null;
                 // Lấy parentTagId để gán cho child tag mới nếu cần
                 if (request.getParentTag() != null && !request.getParentTag().isEmpty()) {
-                    List<?> parentIds = entityManager.createNativeQuery("SELECT id FROM parent_tags WHERE name = :name")
-                        .setParameter("name", request.getParentTag())
+                    List<?> parentIds = entityManager.createNativeQuery("SELECT id FROM parent_tags WHERE code = :code")
+                        .setParameter("code", request.getParentTag())
                         .getResultList();
                     if (!parentIds.isEmpty()) {
                         parentTagIdForChild = ((Number) parentIds.get(0)).longValue();
                     }
                 }
                 // Tạo child tag nếu chưa có
-                for (String tagName : tags) {
-                    List<?> exist = entityManager.createNativeQuery("SELECT id FROM child_tags WHERE name = :name")
-                        .setParameter("name", tagName)
+                for (String tagCode : tags) {
+                    List<?> exist = entityManager.createNativeQuery("SELECT id FROM child_tags WHERE code = :code")
+                        .setParameter("code", tagCode)
                         .getResultList();
                     if (exist.isEmpty() && parentTagIdForChild != null) {
                         entityManager.createNativeQuery(
-                            "INSERT INTO child_tags (name, parent_tag_id) VALUES (:name, :parentTagId)")
-                            .setParameter("name", tagName)
+                            "INSERT INTO child_tags (code, name, parent_tag_id) VALUES (:code, :name, :parentTagId)")
+                            .setParameter("code", tagCode)
+                            .setParameter("name", tagCode) // hoặc map sang tên tiếng Việt nếu có
                             .setParameter("parentTagId", parentTagIdForChild)
                             .executeUpdate();
                     }
                 }
                 // Lấy lại toàn bộ id các tag con (bao gồm vừa tạo)
-                StringBuilder sql = new StringBuilder("SELECT id FROM child_tags WHERE name IN (");
+                StringBuilder sql = new StringBuilder("SELECT id FROM child_tags WHERE code IN (");
                 for (int i = 0; i < tags.size(); i++) {
                     if (i > 0) sql.append(",");
-                    sql.append(":name").append(i);
+                    sql.append(":code").append(i);
                 }
                 sql.append(")");
                 var q = entityManager.createNativeQuery(sql.toString());
                 for (int i = 0; i < tags.size(); i++) {
-                    q.setParameter("name" + i, tags.get(i));
+                    q.setParameter("code" + i, tags.get(i));
                 }
                 List<?> ids = q.getResultList();
                 StringBuilder sb = new StringBuilder();
@@ -143,53 +144,51 @@ public class PostService {
             if (!postRepository.existsById(postId)) {
                 return new ApiResponseDTO(false, "Bài viết không tồn tại", null, "POST_NOT_FOUND");
             }
-            // Map parentTag name to id
+            // Map parentTag code to id
             Long parentTagId = null;
             if (request.getParentTag() != null && !request.getParentTag().isEmpty()) {
-                List<?> ids = entityManager.createNativeQuery("SELECT id FROM parent_tags WHERE name = :name")
-                        .setParameter("name", request.getParentTag())
+                List<?> ids = entityManager.createNativeQuery("SELECT id FROM parent_tags WHERE code = :code")
+                        .setParameter("code", request.getParentTag())
                         .getResultList();
                 if (!ids.isEmpty()) {
                     parentTagId = ((Number) ids.get(0)).longValue();
                 }
             }
-            // Map childTags name list to CSV id string
+            // Map childTags code list to CSV id string
             String childTagIdsCsv = "";
             if (request.getChildTags() != null && !request.getChildTags().isEmpty()) {
                 List<String> tags = request.getChildTags();
                 Long parentTagIdForChild = null;
-                // Lấy parentTagId để gán cho child tag mới nếu cần
                 if (request.getParentTag() != null && !request.getParentTag().isEmpty()) {
-                    List<?> parentIds = entityManager.createNativeQuery("SELECT id FROM parent_tags WHERE name = :name")
-                        .setParameter("name", request.getParentTag())
+                    List<?> parentIds = entityManager.createNativeQuery("SELECT id FROM parent_tags WHERE code = :code")
+                        .setParameter("code", request.getParentTag())
                         .getResultList();
                     if (!parentIds.isEmpty()) {
                         parentTagIdForChild = ((Number) parentIds.get(0)).longValue();
                     }
                 }
-                // Tạo child tag nếu chưa có
-                for (String tagName : tags) {
-                    List<?> exist = entityManager.createNativeQuery("SELECT id FROM child_tags WHERE name = :name")
-                        .setParameter("name", tagName)
+                for (String tagCode : tags) {
+                    List<?> exist = entityManager.createNativeQuery("SELECT id FROM child_tags WHERE code = :code")
+                        .setParameter("code", tagCode)
                         .getResultList();
                     if (exist.isEmpty() && parentTagIdForChild != null) {
                         entityManager.createNativeQuery(
-                            "INSERT INTO child_tags (name, parent_tag_id) VALUES (:name, :parentTagId)")
-                            .setParameter("name", tagName)
+                            "INSERT INTO child_tags (code, name, parent_tag_id) VALUES (:code, :name, :parentTagId)")
+                            .setParameter("code", tagCode)
+                            .setParameter("name", tagCode)
                             .setParameter("parentTagId", parentTagIdForChild)
                             .executeUpdate();
                     }
                 }
-                // Lấy lại toàn bộ id các tag con (bao gồm vừa tạo)
-                StringBuilder sql = new StringBuilder("SELECT id FROM child_tags WHERE name IN (");
+                StringBuilder sql = new StringBuilder("SELECT id FROM child_tags WHERE code IN (");
                 for (int i = 0; i < tags.size(); i++) {
                     if (i > 0) sql.append(",");
-                    sql.append(":name").append(i);
+                    sql.append(":code").append(i);
                 }
                 sql.append(")");
                 var q = entityManager.createNativeQuery(sql.toString());
                 for (int i = 0; i < tags.size(); i++) {
-                    q.setParameter("name" + i, tags.get(i));
+                    q.setParameter("code" + i, tags.get(i));
                 }
                 List<?> ids = q.getResultList();
                 StringBuilder sb = new StringBuilder();
@@ -253,6 +252,7 @@ public class PostService {
             query.registerStoredProcedureParameter(3, Integer.class, jakarta.persistence.ParameterMode.IN);
             query.registerStoredProcedureParameter(4, Long.class, jakarta.persistence.ParameterMode.IN);
 
+            // Truyền nguyên categoryPath FE (ví dụ: /general, /general/intro, ...)
             query.setParameter(1, categoryPath);
             query.setParameter(2, limit);
             query.setParameter(3, offset);
@@ -264,7 +264,6 @@ public class PostService {
             return new ApiResponseDTO(true, "Lấy bài viết theo category thành công", formattedResults, null);
         } catch (Exception ex) {
             String message = extractRootCauseMessage(ex);
-            // Log lỗi chi tiết để debug
             ex.printStackTrace();
             return new ApiResponseDTO(false, "Lỗi khi lấy bài viết theo category: " + message, null, "GET_POSTS_BY_CATEGORY_ERROR");
         }
