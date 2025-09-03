@@ -1,19 +1,29 @@
+
+
 # IT-Forum
 
-## Description
-IT-Forum is a full-stack web application for IT enthusiasts to share knowledge, ask questions, discuss topics, and connect with the tech community. The project includes a modern React frontend and a secure Spring Boot backend, supporting user authentication, post creation, commenting, tagging, and more.
+## Introduction
+IT-Forum is a web platform for the IT community to share knowledge, ask questions, discuss, and connect. The project includes a modern React frontend and a secure Spring Boot backend, supporting authentication, posting, commenting, tagging, searching, recommendations, profile management, authorization, file upload, and more.
 
-## Features
-- User registration and login (email/phone, password, OTP verification)
-- Create, edit, delete, and save posts
-- Comment and reply on posts (nested comments)
-- Like/unlike posts and comments
-- Tagging system (parent/child tags)
-- Search and filter posts by category or tag
-- User profile management (avatar, info, password change)
-- File and image upload for posts
-- Responsive UI, modern design
-- Role-based access and security
+
+## Main Features
+- Register and login (email/phone, password, OTP verification, Google OAuth)
+- Create, edit, delete, save, and view posts
+- Comment, reply, edit, delete, hide/unhide comments (support mention @user)
+- Like/Unlike posts and comments
+- Tag system (parent/child tags), category classification, sidebar recommendations
+- Search and filter posts by tag, category, or keyword
+- Post recommendations based on user behavior
+- Profile management (avatar, info, password change)
+- Upload images and files for posts
+- Responsive, modern UI with dark mode support
+- Role-based access, security, JWT authentication, access control
+- Manage saved, liked, and posted articles
+- Statistics for posts, comments, likes
+- Error notification, validation, realtime status feedback
+
+## Demo Video (Japanese language)
+- [Watch the main feature demo video on Google Drive](https://drive.google.com/file/d/13QLU73dKbLTlEl1_BrQhl83KO1rfBK0k/view?usp=drive_link)
 
 ## Prerequisites
 - Node.js (>= 18.x)
@@ -32,7 +42,7 @@ cd IT-Forum
 
 ### 2. Database setup
 - Create a MySQL database named `prj_forum`.
-- Import all SQL files in the `database/` folder in order: `Table.sql`, `Trigger.sql`, `Procedure.sql`, and data files as needed.
+- Import all SQL files in the `database/` folder in order: `Table.sql`, `Trigger.sql`, `Procedure.sql`, and sample data if needed.
 - Update your MySQL credentials in `backend/src/main/resources/application.properties`.
 
 ### 3. Backend setup
@@ -53,27 +63,31 @@ npm run dev
 ```
 
 ## Configuration
-- Backend configs: `backend/src/main/resources/application.properties` (DB, mail, JWT, etc.)
-- Frontend configs: `frontend/.env` (API base URL, etc.)
+- Backend: `backend/src/main/resources/application.properties` (DB, mail, JWT, ...)
+- Frontend: `frontend/.env` (API base URL, ...)
 
 ## Usage
-1. Register a new account or log in.
-2. Create, view, and interact with posts and comments.
-3. Use the sidebar to explore categories, tags, and resources.
-4. Manage your profile and saved posts in the user section.
+1. Register a new account or log in (via email/phone or Google)
+2. Create, edit, delete, save, search, and interact with posts and comments
+3. Use the sidebar to explore categories, tags, and resources
+4. Manage your profile, saved/liked posts, and change password
+5. Upload images/files when creating or editing posts
+6. Enjoy a modern, optimized UI for both desktop & mobile
 
-## Folder Structure (Main)
+
+
+## Main Folder Structure
 ```
 IT-Forum/
-├── backend/         # Spring Boot backend (Java)
+├── backend/    # Spring Boot backend (Java)
 │   ├── src/
 │   ├── pom.xml
 │   └── ...
-├── frontend/        # React frontend (TypeScript, Vite)
+├── frontend/   # React frontend (TypeScript, Vite)
 │   ├── src/
 │   ├── package.json
 │   └── ...
-├── database/        # SQL schema, triggers, procedures, test data
+├── database/   # SQL schema, triggers, procedures, sample data
 └── README.md
 ```
 
