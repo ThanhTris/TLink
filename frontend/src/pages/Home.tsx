@@ -12,6 +12,7 @@ import { parseMySQLDateVN } from "../utils/timeAgo";
 import { useUser } from "../hooks/useUser";
 import Toast from "../components/Toast";
 import { getCommentsTree } from "../api/comment";
+import Button from "../components/Button";
 
 type FEPost = {
   id: number;
@@ -228,22 +229,22 @@ const Home: React.FC = () => {
         <div className="flex justify-center mt-8 gap-2">
           {totalPages > 5 && (
             <>
-              <button
+              <Button
                 className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
                 disabled={currentPage === 1}
                 onClick={() => handlePageChange(1)}
                 title="Trang đầu"
               >
                 &laquo;
-              </button>
-              <button
+              </Button>
+              <Button
                 className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
                 disabled={currentPage === 1}
                 onClick={() => handlePageChange(currentPage - 1)}
                 title="Trang trước"
               >
                 &lt;
-              </button>
+              </Button>
             </>
           )}
           {getPagination(currentPage, totalPages, 5).map((page, idx) =>
@@ -261,22 +262,22 @@ const Home: React.FC = () => {
           )}
           {totalPages > 5 && (
             <>
-              <button
+              <Button
                 className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
                 disabled={currentPage === totalPages}
                 onClick={() => handlePageChange(currentPage + 1)}
                 title="Trang sau"
               >
                 &gt;
-              </button>
-              <button
+              </Button>
+              <Button
                 className="px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
                 disabled={currentPage === totalPages}
                 onClick={() => handlePageChange(totalPages)}
                 title="Trang cuối"
               >
                 &raquo;
-              </button>
+              </Button>
             </>
           )}
         </div>
