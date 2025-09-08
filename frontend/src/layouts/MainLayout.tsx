@@ -1,6 +1,7 @@
 import React from "react";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
+import Chatbox from "../components/Chatbox";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -35,6 +36,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, hideLayout = false })
           </div>
         </main>
       </div>
+      <Chatbox />
     </div>
   );
 };
