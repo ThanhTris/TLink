@@ -163,7 +163,7 @@ const PostModal: React.FC<PostModalProps> = ({ postId, open, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={e => { e.stopPropagation(); }}>
       <div
         id="post-modal-content"
         className="relative w-3xl max-h-[90vh] bg-white rounded-xl shadow-xl flex flex-col overflow-hidden pointer-events-auto"
@@ -293,7 +293,7 @@ const PostModal: React.FC<PostModalProps> = ({ postId, open, onClose }) => {
         </div>
       </div>
       {/* Overlay click để đóng */}
-      <div className="fixed inset-0 z-40 pointer-events-none" />
+      {/* <div className="fixed inset-0 z-40 pointer-events-none" /> */}
     </div>
   );
 };
