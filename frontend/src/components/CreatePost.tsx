@@ -25,35 +25,31 @@ import { createPost, uploadPostImage, uploadPostFile, updatePost as apiUpdatePos
 const tagOptions = [
   {
     parent: "Thảo luận chung",
-    children: ["Giới thiệu – Làm quen", "Chuyện ngoài IT (off-topic)"],
+    children: ["Giới thiệu – Làm quen", "Chuyện ngoài IT", "Hỏi đáp linh tinh", "Thảo luận công nghệ"],
   },
   {
     parent: "Lập trình",
     children: [
-      "HTML",
-      "CSS",
-      "JavaScript",
-      "React",
-      "Node.js",
-      "Java",
-      "PHP",
-      "Android",
-      "iOS",
-      "Flutter",
+      "Web",
+      "Mobile",
+      "Backend",
+      "Frontend",
+      "Machine Learning",
+      "Data",
     ],
   },
-  { parent: "Hệ điều hành", children: ["Windows", "Linux / Ubuntu", "macOS"] },
+  { parent: "Hệ điều hành", children: ["Windows", "Linux / Ubuntu", "macOS", "Command Line", "Cài đặt hệ điều hành", "Dual Boot"] },
   {
     parent: "Bảo mật & mạng",
-    children: ["An ninh mạng", "Hệ thống mạng (cấu hình, lỗi…)"],
+    children: ["An ninh mạng", "Hệ thống mạng", "Kiểm thử bảo mật", "Firewall/ IDS", "Mã hóa & bảo vệ dữ liệu" ],
   },
   {
     parent: "Tài nguyên học tập",
-    children: ["Tài liệu – Khóa học", "Chia sẻ kinh nghiệm học IT"],
+    children: ["Tài liệu – Khóa học", "Chia sẻ kinh nghiệm", "Lộ trình học tập"],
   },
   {
     parent: "Tuyển dụng & nghề nghiệp",
-    children: ["Việc làm IT", "CV, phỏng vấn, lộ trình"],
+    children: ["Việc làm IT", "CV & phỏng vấn", "Freelance"],
   },
 ];
 
