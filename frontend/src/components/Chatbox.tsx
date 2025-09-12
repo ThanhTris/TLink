@@ -2,6 +2,10 @@ import React, { useState, useRef, useEffect } from "react";
 import { MessageCircleMore, SendHorizontal } from "lucide-react";
 import Button from "./Button";
 import PostModal from "./PostModal";
+import ChatPostCard from "./ChatPostCard";
+import type { ChatDisplayItem } from "./ChatPostCard";
+
+const API_URL = "http://localhost:5678/webhook-test/chatbox"; // Unified endpoint
 
 const Chatbox: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -9,7 +13,9 @@ const Chatbox: React.FC = () => {
   const [messages, setMessages] = useState<{ role: "user" | "bot"; content: string }[]>([]);
   const [postModalId, setPostModalId] = useState<number | null>(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [postResults, setPostResults] = useState<any[]>([]);
+  const [displayItems, setDisplayItems] = useState<ChatDisplayItem[]>([]);
+  const [createMode, setCreateMode] = useState<{ active: boolean; step?: string | null; options: string[]; selectedChildTags: string[] }>({ active: false, step: null, options: [], selectedChildTags: [] });
+  const [lastMessage, setLastMessage] = useState<string | null>(null); // ADD: lastMessage state (bị thiếu trước đó)
   const chatboxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const chatContentRef = useRef<HTMLDivElement>(null);
@@ -51,55 +57,192 @@ const Chatbox: React.FC = () => {
     if (open && chatContentRef.current) {
       chatContentRef.current.scrollTop = chatContentRef.current.scrollHeight;
     }
-  }, [open, messages, postResults, isTyping]);
+  }, [open, messages, displayItems, isTyping, createMode]);
 
   // Đảm bảo khi mở chatbox thì không mở PostModal
   useEffect(() => {
     if (open) setPostModalId(null);
   }, [open]);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!input.trim()) return;
-    const userMsg = input;
-    setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
-    setInput("");
-    setIsTyping(true);
-    setPostResults([]); // clear old results
-    try {
-      const res = await fetch("http://localhost:5678/webhook-test/42ddb2dd-e9b3-43c0-810f-e36c2c1c121c", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chatInput: userMsg,
-          userId: userId,
-        }),
-      });
-      const data = await res.json();
-      setIsTyping(false);
-      if (data.message) {
-        setMessages((prev) => [
-          ...prev,
-          { role: "bot", content: data.message },
-        ]);
+  // Helper: normalize single post-like object
+  const normalizeOne = (obj: any, variant: ChatDisplayItem["variant"]): ChatDisplayItem => {
+    if (!obj || typeof obj !== 'object') return { variant };
+    const { authorId, authorID, author_id, ...rest } = obj; // strip author
+    return { ...rest, variant };
+  };
+
+  // Helper: normalize array
+  const normalizeArray = (arr: any[], variant: ChatDisplayItem["variant"]) =>
+    arr.map(o => normalizeOne(o, variant));
+
+  // Unified response processor
+  const processApiResponse = (raw: any) => {
+    const payload = Array.isArray(raw) ? raw[0] : raw;
+    const action = payload?.action ?? null;
+    const step = payload?.step ?? null;
+
+    // Update create mode status
+    if (action === 'create') {
+      const opts = Array.isArray(payload?.data) ? payload.data : [];
+      setCreateMode(prev => ({
+        active: true,
+        step,
+        options: opts,
+        selectedChildTags: step === 'choose_child_tag' ? prev.selectedChildTags : []
+      }));
+    } else {
+      setCreateMode({ active: false, step: null, options: [], selectedChildTags: [] });
+    }
+
+    // Show bot message
+    if (payload?.message) {
+      setMessages(prev => [...prev, { role: 'bot', content: payload.message }]);
+      setLastMessage(payload.message);
+    }
+
+    // Create review
+    if (action === 'create' && step === 'review' && payload?.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
+      const item = normalizeOne(payload.data, 'create');
+      setDisplayItems([item]);
+      if (!payload?.message) setLastMessage(item.title || 'Tạo bài viết');
+      return;
+    }
+
+    // Edit
+    if (action === 'edit' && payload?.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
+      const item = normalizeOne(payload.data, 'edit');
+      setDisplayItems([item]);
+      if (!payload?.message) setLastMessage(item.title || 'Chỉnh sửa bài viết');
+      return;
+    }
+
+    // Delete
+    if (action === 'delete') {
+      if (payload?.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
+        const item = normalizeOne(payload.data, 'delete');
+        setDisplayItems([item]);
+        if (!payload?.message) setLastMessage(`Đã xóa: ${item.title || 'Bài viết'}`);
+      } else {
+        const title = payload?.data?.title || 'Bài viết';
+        setDisplayItems([{ id: payload?.data?.id, title, variant: 'delete' }]);
+        if (!payload?.message) setLastMessage(`Đã xóa: ${title}`);
       }
-      if (Array.isArray(data.data) && data.data.length > 0) {
-        setPostResults(data.data);
+      return;
+    }
+
+    // Search / list
+    if (Array.isArray(payload?.data) && payload.data.length > 0 && !(action === 'create' && (step === 'choose_parent_tag' || step === 'choose_child_tag'))) {
+      const items = normalizeArray(payload.data, 'search');
+      setDisplayItems(items);
+      if (!payload?.message) {
+        const first = items[0];
+        setLastMessage(first.title || first.content?.slice(0, 60) || 'Kết quả tìm kiếm');
       }
-      if (!data.message && (!Array.isArray(data.data) || data.data.length === 0)) {
-        setMessages((prev) => [
-          ...prev,
-          { role: "bot", content: data.output || data.message || JSON.stringify(data) },
-        ]);
-      }
-    } catch (err) {
-      setIsTyping(false);
-      setMessages((prev) => [
-        ...prev,
-        { role: "bot", content: "Lỗi kết nối đến máy chủ!" },
-      ]);
+      return;
+    }
+
+    // Fallback
+    if (!payload?.message && !(action === 'create' && (step === 'choose_parent_tag' || step === 'choose_child_tag'))) {
+      const txt = payload?.output || JSON.stringify(payload);
+      setMessages(prev => [...prev, { role: 'bot', content: txt }]);
+      setLastMessage(txt);
     }
   };
+
+  const sendRequest = async (body: any) => {
+    const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    return res.json();
+  };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!input.trim() && !(createMode.active && createMode.step === 'choose_child_tag')) return;
+
+    const userMsg = input.trim();
+
+    // Decide what we are sending based on current mode/step
+    const action = createMode.active ? 'create' : null;
+    const step = createMode.step || null;
+
+    // Parent tag selection by typing
+    if (action === 'create' && step === 'choose_parent_tag') {
+      setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+      setInput('');
+      setIsTyping(true);
+      setCreateMode(prev => ({ ...prev, options: [] }));
+      try {
+        const data = await sendRequest({ userId, action: 'create', step, parentTag: userMsg });
+        setIsTyping(false); processApiResponse(data);
+      } catch { setIsTyping(false); setMessages(prev => [...prev, { role: 'bot', content: 'Lỗi kết nối đến máy chủ!' }]); }
+      return;
+    }
+
+    // Child tag step: Enter acts as confirm if we have selected tags and no manual input; if user typed something treat it as a custom tag appended
+    if (action === 'create' && step === 'choose_child_tag') {
+      if (userMsg) {
+        setCreateMode(prev => prev.selectedChildTags.includes(userMsg) ? prev : { ...prev, selectedChildTags: [...prev.selectedChildTags, userMsg] });
+        setInput('');
+        return; // wait for confirm
+      }
+      if (createMode.selectedChildTags.length === 0) return;
+      const chosenArray = [...createMode.selectedChildTags];
+      // Display readable list instead of JSON string
+      setMessages(prev => [...prev, { role: 'user', content: chosenArray.join(', ') }]);
+      setIsTyping(true);
+      setCreateMode(prev => ({ ...prev, options: [], selectedChildTags: [] }));
+      try {
+        const data = await sendRequest({ userId, action: 'create', step, childTags: chosenArray });
+        setIsTyping(false); processApiResponse(data);
+      } catch { setIsTyping(false); setMessages(prev => [...prev, { role: 'bot', content: 'Lỗi kết nối đến máy chủ!' }]); }
+      return;
+    }
+
+    // Normal flow
+    if (!userMsg) return;
+    // Clear old unified items (previous search/create results) before new query
+    setDisplayItems([]);
+    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setInput('');
+    setIsTyping(true);
+    try { const data = await sendRequest({ userId, action: null, step: null, chatInput: userMsg }); setIsTyping(false); processApiResponse(data); } catch { setIsTyping(false); setMessages(prev => [...prev, { role: 'bot', content: 'Lỗi kết nối đến máy chủ!' }]); }
+  };
+
+  const handleParentTagSelect = async (tag: string) => {
+    if (!createMode.active || createMode.step !== 'choose_parent_tag' || isTyping) return;
+    setMessages(prev => [...prev, { role: 'user', content: tag }]);
+    setIsTyping(true);
+    setCreateMode(prev => ({ ...prev, options: [] }));
+    try { const data = await sendRequest({ userId, action: 'create', step: createMode.step, parentTag: tag }); setIsTyping(false); processApiResponse(data); } catch { setIsTyping(false); setMessages(prev => [...prev, { role: 'bot', content: 'Lỗi kết nối đến máy chủ!' }]); }
+  };
+
+  // New: toggle child tag selection
+  const toggleChildTag = (tag: string) => {
+    if (!createMode.active || createMode.step !== 'choose_child_tag' || isTyping) return;
+    setCreateMode(prev => ({ ...prev, selectedChildTags: prev.selectedChildTags.includes(tag) ? prev.selectedChildTags.filter(t => t !== tag) : [...prev.selectedChildTags, tag] }));
+  };
+
+  const submitChildTags = async () => {
+    if (!createMode.active || createMode.step !== 'choose_child_tag' || createMode.selectedChildTags.length === 0 || isTyping) return;
+    const chosenArray = [...createMode.selectedChildTags];
+    // Display readable list
+    setMessages(prev => [...prev, { role: 'user', content: chosenArray.join(', ') }]);
+    setIsTyping(true);
+    setCreateMode(prev => ({ ...prev, options: [], selectedChildTags: [] }));
+    try { const data = await sendRequest({ userId, action: 'create', step: createMode.step, childTags: chosenArray }); setIsTyping(false); processApiResponse(data); } catch { setIsTyping(false); setMessages(prev => [...prev, { role: 'bot', content: 'Lỗi kết nối đến máy chủ!' }]); }
+  };
+
+  // Đóng chatbox khi nhấn nút Esc
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && open) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
 
   // Bắt sự kiện click vào link bài viết trong chat
   useEffect(() => {
@@ -113,22 +256,11 @@ const Chatbox: React.FC = () => {
     };
     const chatbox = chatboxRef.current;
     if (chatbox) chatbox.addEventListener("click", handler);
-    return () => {
-      if (chatbox) chatbox.removeEventListener("click", handler);
-    };
+    return () => { if (chatbox) chatbox.removeEventListener("click", handler); };
   }, [open, messages]);
 
   return (
     <div style={{ position: "fixed", right: 24, bottom: 24, zIndex: 1000 }}>
-      {!open && (
-        <Button
-          onClick={() => setOpen(true)}
-          className="w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center shadow-lg hover:bg-blue-700 transition-colors"
-          aria-label="Mở chatbox"
-        >
-          <MessageCircleMore size={32} color="#fff" />
-        </Button>
-      )}
       {open && (
         <>
         <div
@@ -138,11 +270,12 @@ const Chatbox: React.FC = () => {
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-2 bg-blue-600 text-white">
             <span className="font-semibold">Hỗ trợ AI</span>
+            {/* Hiển thị lastMessage nhỏ dưới header nếu có */}
             <Button onClick={() => setOpen(false)} className="text-white text-xl font-bold">×</Button>
           </div>
           {/* Chat content */}
           <div ref={chatContentRef} className="flex-1 p-4 overflow-y-auto">
-            {messages.length === 0 && postResults.length === 0 && (
+            {messages.length === 0 && displayItems.length === 0 && !createMode.active && (
               <div className="text-gray-500 text-sm text-center mt-8">Chatbot AI sẵn sàng hỗ trợ bạn!</div>
             )}
             {messages.map((msg, idx) => (
@@ -158,38 +291,50 @@ const Chatbox: React.FC = () => {
                 </span>
               </div>
             ))}
-            {/* Render kết quả bài viết */}
-            {postResults.length > 0 && postResults.map((post, idx) => {
-              let parentTags: string[] = [];
-              let childTags: string[] = [];
-              if (post.parent_tags) {
-                if (Array.isArray(post.parent_tags)) parentTags = post.parent_tags;
-                else if (typeof post.parent_tags === "string" && post.parent_tags) parentTags = post.parent_tags.split(",");
-              }
-              if (post.child_tags) {
-                if (Array.isArray(post.child_tags)) childTags = post.child_tags;
-                else if (typeof post.child_tags === "string" && post.child_tags) childTags = post.child_tags.split(",");
-              }
-              const allTags = [...parentTags, ...childTags].filter(Boolean);
-              return (
-                <div key={post.id || post.post_id || idx} className="chat-post-item bg-gray-100 px-3 py-2 rounded-2xl max-w-[80%] mb-2">
-                  <a
-                    href="#"
-                    data-postid={post.id || post.post_id}
-                    className="chat-link font-semibold text-blue-600 hover:underline block"
-                    onClick={e => { e.preventDefault(); setPostModalId(Number(post.id || post.post_id)); }}
-                  >
-                    {post.title}
-                  </a>
-                  <div className="flex flex-wrap gap-1 mb-1">
-                    {allTags.map((tag, i) => (
-                      <span key={i} className="inline-block text-xs font-semibold text-blue-700 bg-blue-100 rounded-full px-2 py-0.5">#{tag.trim()}</span>
-                    ))}
-                  </div>
-                  <div className="text-xs text-gray-500">{post.shorter_content || ""}</div>
+            {/* Create mode options */}
+            {createMode.active && createMode.step === 'choose_parent_tag' && createMode.options.length > 0 && (
+              <div className="mb-2 text-left">
+                <div className="flex flex-wrap gap-2">
+                  {createMode.options.map(opt => (
+                    <button
+                      key={opt}
+                      onClick={() => handleParentTagSelect(opt)}
+                      disabled={isTyping}
+                      className={`text-xs px-3 py-1 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-400 ${isTyping ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
                 </div>
-              );
-            })}
+              </div>
+            )}
+            {createMode.active && createMode.step === 'choose_child_tag' && createMode.options.length > 0 && (
+              <div className="mb-3 text-left space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  {createMode.options.map(opt => {
+                    const selected = createMode.selectedChildTags.includes(opt);
+                    return (
+                      <button key={opt} type="button" onClick={() => toggleChildTag(opt)} disabled={isTyping} className={`text-xs px-3 py-1 rounded-full border transition focus:outline-none focus:ring-2 focus:ring-blue-400 ${selected ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-700 border-blue-400 hover:bg-blue-50'} ${isTyping ? 'opacity-60 cursor-not-allowed' : ''}`}>{selected ? '✓ ' : ''}{opt}</button>
+                    );
+                  })}
+                </div>
+                <div className="text-xs text-gray-600">Đã chọn: {createMode.selectedChildTags.length > 0 ? createMode.selectedChildTags.join(', ') : 'Chưa có'}</div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={submitChildTags} disabled={isTyping || createMode.selectedChildTags.length === 0} className={`text-xs px-3 py-1 rounded-md font-semibold ${createMode.selectedChildTags.length === 0 || isTyping ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700'}`}>Xác nhận</button>
+                  {createMode.selectedChildTags.length > 0 && (
+                    <button type="button" onClick={() => setCreateMode(prev => ({ ...prev, selectedChildTags: [] }))} disabled={isTyping} className="text-xs px-3 py-1 rounded-md bg-red-100 text-red-600 hover:bg-red-200">Reset</button>
+                  )}
+                </div>
+              </div>
+            )}
+            {/* Unified post items */}
+            {displayItems.map((it, i) => (
+              <ChatPostCard
+                key={i + String(it.id ?? '') + it.variant}
+                item={it}
+                onOpen={(id) => id && setPostModalId(Number(id))}
+              />
+            ))}
             {isTyping && (
               <div className="text-left mb-2">
                 <span className="inline-block bg-gray-100 text-gray-900 px-3 py-2 rounded-2xl max-w-[80%] animate-pulse">AI đang trả lời...</span>
@@ -203,14 +348,10 @@ const Chatbox: React.FC = () => {
                 ref={inputRef}
                 type="text"
                 className="flex-1 rounded-full border px-3 py-2 pr-10 outline-none focus:border-blue-500"
-                placeholder="Nhập tin nhắn..."
+                placeholder={createMode.active && createMode.step === 'choose_parent_tag' ? 'Nhập hoặc chọn chủ đề...' : (createMode.active && createMode.step === 'choose_child_tag' ? 'Nhập tag con mới (Enter để thêm) hoặc chọn ở trên...' : 'Nhập tin nhắn...')}
                 value={input}
                 onChange={e => setInput(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    handleSubmit();
-                  }
-                }}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { handleSubmit(); } }}
               />
               <Button
                 className="absolute right-5 text-blue-600 hover:text-blue-700 p-1 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -229,6 +370,26 @@ const Chatbox: React.FC = () => {
           </div>
         )}
         </>
+      )}
+      {!open && (
+        <div className="flex flex-col items-end">
+          <Button
+            onClick={() => setOpen(true)}
+            className="w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center shadow-lg hover:bg-blue-700 transition-colors"
+            aria-label="Mở chatbox"
+          >
+            <MessageCircleMore size={32} color="#fff" />
+          </Button>
+          {lastMessage && (
+            <div
+              className="mt-2 max-w-60 text-xs bg-white shadow px-3 py-2 rounded-lg border border-gray-200 text-gray-700 overflow-hidden"
+              style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}
+              title={lastMessage}
+            >
+              {lastMessage}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
