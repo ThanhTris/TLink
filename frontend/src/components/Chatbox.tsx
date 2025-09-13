@@ -7,13 +7,20 @@ import type { ChatDisplayItem } from "./ChatPostCard";
 
 const API_URL = "http://localhost:5678/webhook-test/chatbox"; // Unified endpoint
 
+// Thay đổi: thêm kiểu ChatMessage có thể chứa card
+type ChatMessage = {
+  role: "user" | "bot";
+  content: string;
+  card?: ChatDisplayItem; // nếu có card thì content dùng làm mô tả / có thể để rỗng
+};
+
 const Chatbox: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<{ role: "user" | "bot"; content: string }[]>([]);
+  // Thay displayItems -> bỏ hẳn, tích hợp vào messages
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [postModalId, setPostModalId] = useState<number | null>(null);
   const [isTyping, setIsTyping] = useState(false);
-  const [displayItems, setDisplayItems] = useState<ChatDisplayItem[]>([]);
   const [createMode, setCreateMode] = useState<{ active: boolean; step?: string | null; options: string[]; selectedChildTags: string[] }>({ active: false, step: null, options: [], selectedChildTags: [] });
   const [lastMessage, setLastMessage] = useState<string | null>(null); // ADD: lastMessage state (bị thiếu trước đó)
   const chatboxRef = useRef<HTMLDivElement>(null);
@@ -57,95 +64,125 @@ const Chatbox: React.FC = () => {
     if (open && chatContentRef.current) {
       chatContentRef.current.scrollTop = chatContentRef.current.scrollHeight;
     }
-  }, [open, messages, displayItems, isTyping, createMode]);
+  }, [open, messages, isTyping, createMode]);
 
   // Đảm bảo khi mở chatbox thì không mở PostModal
   useEffect(() => {
     if (open) setPostModalId(null);
   }, [open]);
 
-  // Helper: normalize single post-like object
+  // Helper giữ lại để chuẩn hóa
   const normalizeOne = (obj: any, variant: ChatDisplayItem["variant"]): ChatDisplayItem => {
-    if (!obj || typeof obj !== 'object') return { variant };
-    const { authorId, authorID, author_id, ...rest } = obj; // strip author
+    if (!obj || typeof obj !== "object") return { variant };
+    const { authorId, authorID, author_id, ...rest } = obj;
     return { ...rest, variant };
   };
-
-  // Helper: normalize array
   const normalizeArray = (arr: any[], variant: ChatDisplayItem["variant"]) =>
     arr.map(o => normalizeOne(o, variant));
 
-  // Unified response processor
+  // Thay đổi toàn bộ processApiResponse: dựng thứ tự message -> data -> lastMessage
   const processApiResponse = (raw: any) => {
     const payload = Array.isArray(raw) ? raw[0] : raw;
     const action = payload?.action ?? null;
     const step = payload?.step ?? null;
 
-    // Update create mode status
-    if (action === 'create') {
+    // Cập nhật create mode (giữ nguyên)
+    if (action === "create") {
       const opts = Array.isArray(payload?.data) ? payload.data : [];
       setCreateMode(prev => ({
         active: true,
         step,
         options: opts,
-        selectedChildTags: step === 'choose_child_tag' ? prev.selectedChildTags : []
+        selectedChildTags: step === "choose_child_tag" ? prev.selectedChildTags : []
       }));
     } else {
       setCreateMode({ active: false, step: null, options: [], selectedChildTags: [] });
     }
 
-    // Show bot message
+    const newMessages: ChatMessage[] = [];
+
+    // 1) message trước
     if (payload?.message) {
-      setMessages(prev => [...prev, { role: 'bot', content: payload.message }]);
+      newMessages.push({ role: "bot", content: payload.message });
       setLastMessage(payload.message);
     }
 
-    // Create review
-    if (action === 'create' && step === 'review' && payload?.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
-      const item = normalizeOne(payload.data, 'create');
-      setDisplayItems([item]);
-      if (!payload?.message) setLastMessage(item.title || 'Tạo bài viết');
-      return;
-    }
-
-    // Edit
-    if (action === 'edit' && payload?.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
-      const item = normalizeOne(payload.data, 'edit');
-      setDisplayItems([item]);
-      if (!payload?.message) setLastMessage(item.title || 'Chỉnh sửa bài viết');
-      return;
-    }
-
-    // Delete
-    if (action === 'delete') {
-      if (payload?.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
-        const item = normalizeOne(payload.data, 'delete');
-        setDisplayItems([item]);
-        if (!payload?.message) setLastMessage(`Đã xóa: ${item.title || 'Bài viết'}`);
-      } else {
-        const title = payload?.data?.title || 'Bài viết';
-        setDisplayItems([{ id: payload?.data?.id, title, variant: 'delete' }]);
-        if (!payload?.message) setLastMessage(`Đã xóa: ${title}`);
+    // 2) data (post card) ở giữa
+    // - Single object (create/edit/delete review)
+    if (
+      payload?.data &&
+      typeof payload.data === "object" &&
+      !Array.isArray(payload.data) &&
+      (action === "create" || action === "edit" || action === "delete") &&
+      (step === "review" || action !== "create")
+    ) {
+      const variant: ChatDisplayItem["variant"] =
+        action === "create"
+          ? "create"
+          : action === "edit"
+          ? "edit"
+          : "delete";
+      const item = normalizeOne(payload.data, variant);
+      newMessages.push({
+        role: "bot",
+        content: item.title || "",
+        card: item
+      });
+      if (!payload?.message && !payload?.lastMessage) {
+        setLastMessage(item.title || variant.toUpperCase());
       }
-      return;
     }
 
-    // Search / list
-    if (Array.isArray(payload?.data) && payload.data.length > 0 && !(action === 'create' && (step === 'choose_parent_tag' || step === 'choose_child_tag'))) {
-      const items = normalizeArray(payload.data, 'search');
-      setDisplayItems(items);
-      if (!payload?.message) {
+    // - Array data (search/list or create choose lists—but chỉ hiển thị khi thực sự là kết quả chứ không phải bước chọn tag)
+    if (
+      Array.isArray(payload?.data) &&
+      payload.data.length > 0 &&
+      !(
+        action === "create" &&
+        (step === "choose_parent_tag" || step === "choose_child_tag")
+      )
+    ) {
+      const items = normalizeArray(payload.data, action === "delete" ? "delete" : action === "edit" ? "edit" : action === "create" ? "create" : "search");
+      items.forEach(it => {
+        newMessages.push({
+          role: "bot",
+            content: it.title || it.content?.slice(0, 60) || "",
+          card: it
+        });
+      });
+      if (!payload?.message && !payload?.lastMessage) {
         const first = items[0];
-        setLastMessage(first.title || first.content?.slice(0, 60) || 'Kết quả tìm kiếm');
+        const txt =
+          first.title ||
+          (typeof first.content === "string"
+            ? first.content.slice(0, 60)
+            : "Kết quả");
+        setLastMessage(txt);
       }
-      return;
     }
 
-    // Fallback
-    if (!payload?.message && !(action === 'create' && (step === 'choose_parent_tag' || step === 'choose_child_tag'))) {
+    // Xóa logic cũ: không còn setDisplayItems (vì đã tích hợp vào messages)
+
+    // 3) lastMessage sau cùng
+    if (payload?.lastMessage) {
+      newMessages.push({ role: "bot", content: payload.lastMessage });
+      setLastMessage(payload.lastMessage);
+    }
+
+    // Fallback nếu không có gì rõ ràng
+    if (
+      newMessages.length === 0 &&
+      !payload?.message &&
+      !payload?.lastMessage
+    ) {
       const txt = payload?.output || JSON.stringify(payload);
-      setMessages(prev => [...prev, { role: 'bot', content: txt }]);
+      newMessages.push({ role: "bot", content: txt });
       setLastMessage(txt);
+    }
+
+    // Gộp vào danh sách tin nhắn
+    if (newMessages.length > 0) {
+      setMessages(prev => [...prev, ...newMessages]);
     }
   };
 
@@ -156,17 +193,15 @@ const Chatbox: React.FC = () => {
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!input.trim() && !(createMode.active && createMode.step === 'choose_child_tag')) return;
+    if (!input.trim() && !(createMode.active && createMode.step === "choose_child_tag")) return;
 
     const userMsg = input.trim();
-
-    // Decide what we are sending based on current mode/step
-    const action = createMode.active ? 'create' : null;
+    const action = createMode.active ? "create" : null;
     const step = createMode.step || null;
 
     // Parent tag selection by typing
-    if (action === 'create' && step === 'choose_parent_tag') {
-      setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    if (action === "create" && step === "choose_parent_tag") {
+      setMessages(prev => [...prev, { role: "user", content: userMsg }]);
       setInput('');
       setIsTyping(true);
       setCreateMode(prev => ({ ...prev, options: [] }));
@@ -178,7 +213,7 @@ const Chatbox: React.FC = () => {
     }
 
     // Child tag step: Enter acts as confirm if we have selected tags and no manual input; if user typed something treat it as a custom tag appended
-    if (action === 'create' && step === 'choose_child_tag') {
+    if (action === "create" && step === "choose_child_tag") {
       if (userMsg) {
         setCreateMode(prev => prev.selectedChildTags.includes(userMsg) ? prev : { ...prev, selectedChildTags: [...prev.selectedChildTags, userMsg] });
         setInput('');
@@ -187,7 +222,7 @@ const Chatbox: React.FC = () => {
       if (createMode.selectedChildTags.length === 0) return;
       const chosenArray = [...createMode.selectedChildTags];
       // Display readable list instead of JSON string
-      setMessages(prev => [...prev, { role: 'user', content: chosenArray.join(', ') }]);
+      setMessages(prev => [...prev, { role: "user", content: chosenArray.join(', ') }]);
       setIsTyping(true);
       setCreateMode(prev => ({ ...prev, options: [], selectedChildTags: [] }));
       try {
@@ -197,19 +232,24 @@ const Chatbox: React.FC = () => {
       return;
     }
 
-    // Normal flow
+    // Normal flow (loại bỏ đoạn xóa displayItems trước đây)
     if (!userMsg) return;
-    // Clear old unified items (previous search/create results) before new query
-    setDisplayItems([]);
-    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
-    setInput('');
+    setMessages(prev => [...prev, { role: "user", content: userMsg }]);
+    setInput("");
     setIsTyping(true);
-    try { const data = await sendRequest({ userId, action: null, step: null, chatInput: userMsg }); setIsTyping(false); processApiResponse(data); } catch { setIsTyping(false); setMessages(prev => [...prev, { role: 'bot', content: 'Lỗi kết nối đến máy chủ!' }]); }
+    try {
+      const data = await sendRequest({ userId, action: null, step: null, chatInput: userMsg });
+      setIsTyping(false);
+      processApiResponse(data);
+    } catch {
+      setIsTyping(false);
+      setMessages(prev => [...prev, { role: "bot", content: "Lỗi kết nối đến máy chủ!" }]);
+    }
   };
 
   const handleParentTagSelect = async (tag: string) => {
-    if (!createMode.active || createMode.step !== 'choose_parent_tag' || isTyping) return;
-    setMessages(prev => [...prev, { role: 'user', content: tag }]);
+    if (!createMode.active || createMode.step !== "choose_parent_tag" || isTyping) return;
+    setMessages(prev => [...prev, { role: "user", content: tag }]);
     setIsTyping(true);
     setCreateMode(prev => ({ ...prev, options: [] }));
     try { const data = await sendRequest({ userId, action: 'create', step: createMode.step, parentTag: tag }); setIsTyping(false); processApiResponse(data); } catch { setIsTyping(false); setMessages(prev => [...prev, { role: 'bot', content: 'Lỗi kết nối đến máy chủ!' }]); }
@@ -217,15 +257,15 @@ const Chatbox: React.FC = () => {
 
   // New: toggle child tag selection
   const toggleChildTag = (tag: string) => {
-    if (!createMode.active || createMode.step !== 'choose_child_tag' || isTyping) return;
+    if (!createMode.active || createMode.step !== "choose_child_tag" || isTyping) return;
     setCreateMode(prev => ({ ...prev, selectedChildTags: prev.selectedChildTags.includes(tag) ? prev.selectedChildTags.filter(t => t !== tag) : [...prev.selectedChildTags, tag] }));
   };
 
   const submitChildTags = async () => {
-    if (!createMode.active || createMode.step !== 'choose_child_tag' || createMode.selectedChildTags.length === 0 || isTyping) return;
+    if (!createMode.active || createMode.step !== "choose_child_tag" || createMode.selectedChildTags.length === 0 || isTyping) return;
     const chosenArray = [...createMode.selectedChildTags];
     // Display readable list
-    setMessages(prev => [...prev, { role: 'user', content: chosenArray.join(', ') }]);
+    setMessages(prev => [...prev, { role: "user", content: chosenArray.join(', ') }]);
     setIsTyping(true);
     setCreateMode(prev => ({ ...prev, options: [], selectedChildTags: [] }));
     try { const data = await sendRequest({ userId, action: 'create', step: createMode.step, childTags: chosenArray }); setIsTyping(false); processApiResponse(data); } catch { setIsTyping(false); setMessages(prev => [...prev, { role: 'bot', content: 'Lỗi kết nối đến máy chủ!' }]); }
@@ -275,22 +315,34 @@ const Chatbox: React.FC = () => {
           </div>
           {/* Chat content */}
           <div ref={chatContentRef} className="flex-1 p-4 overflow-y-auto">
-            {messages.length === 0 && displayItems.length === 0 && !createMode.active && (
+            {messages.length === 0 && (
               <div className="text-gray-500 text-sm text-center mt-8">Chatbot AI sẵn sàng hỗ trợ bạn!</div>
             )}
-            {messages.map((msg, idx) => (
-              <div key={idx} className={msg.role === "user" ? "text-right mb-2" : "text-left mb-2"}>
-                <span
-                  className={
-                    msg.role === "user"
-                      ? "inline-block bg-blue-100 text-blue-900 px-3 py-2 rounded-2xl max-w-[80%]"
-                      : "inline-block bg-gray-100 text-gray-900 px-3 py-2 rounded-2xl max-w-[80%]"
-                  }
-                >
-                  {msg.content}
-                </span>
-              </div>
-            ))}
+            {messages.map((msg, idx) => {
+              if (msg.card) {
+                return (
+                  <div key={"card-" + idx} className="mb-2 text-left">
+                    <ChatPostCard
+                      item={msg.card}
+                      onOpen={(id) => id && setPostModalId(Number(id))}
+                    />
+                  </div>
+                );
+              }
+              return (
+                <div key={idx} className={msg.role === "user" ? "text-right mb-2" : "text-left mb-2"}>
+                  <span
+                    className={
+                      msg.role === "user"
+                        ? "inline-block bg-blue-100 text-blue-900 px-3 py-2 rounded-2xl max-w-[80%]"
+                        : "inline-block bg-gray-100 text-gray-900 px-3 py-2 rounded-2xl max-w-[80%]"
+                    }
+                  >
+                    {msg.content}
+                  </span>
+                </div>
+              );
+            })}
             {/* Create mode options */}
             {createMode.active && createMode.step === 'choose_parent_tag' && createMode.options.length > 0 && (
               <div className="mb-2 text-left">
@@ -327,14 +379,6 @@ const Chatbox: React.FC = () => {
                 </div>
               </div>
             )}
-            {/* Unified post items */}
-            {displayItems.map((it, i) => (
-              <ChatPostCard
-                key={i + String(it.id ?? '') + it.variant}
-                item={it}
-                onOpen={(id) => id && setPostModalId(Number(id))}
-              />
-            ))}
             {isTyping && (
               <div className="text-left mb-2">
                 <span className="inline-block bg-gray-100 text-gray-900 px-3 py-2 rounded-2xl max-w-[80%] animate-pulse">AI đang trả lời...</span>
@@ -383,7 +427,7 @@ const Chatbox: React.FC = () => {
           {lastMessage && (
             <div
               className="mt-2 max-w-60 text-xs bg-white shadow px-3 py-2 rounded-lg border border-gray-200 text-gray-700 overflow-hidden"
-              style={{ whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}
+              style={{ whiteSpace: "nowrap", textOverflow: "ellipsis" }}
               title={lastMessage}
             >
               {lastMessage}
