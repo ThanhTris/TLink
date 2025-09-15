@@ -1,4 +1,7 @@
-import React from "react";
+import React, { useMemo } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import twemoji from "twemoji";
 
 export type ChatPostVariant = 'search' | 'create' | 'edit' | 'delete';
 
@@ -57,17 +60,52 @@ const ChatPostCard: React.FC<ChatPostCardProps> = ({ item, onOpen }) => {
 
   const allTags = [...pTags, ...cTags].filter(Boolean);
   const clickable = !!item.id && item.variant !== 'create';
-  const showFullContent = item.variant === 'create' || item.variant === 'edit';
   const containerClass = `chat-post-item px-3 py-2 rounded-2xl max-w-[80%] mb-2 text-left ${variantStyles[item.variant]}`;
 
-  // chuẩn hóa và cắt nội dung tối đa 300 ký tự
-  const rawContent = (() => {
-    const full = (item.variant === 'create' || item.variant === 'edit')
-      ? item.content
-      : (item.shorter_content || item.content);
-    return full || "";
-  })();
-  const displayedContent = rawContent.length > 300 ? rawContent.slice(0, 300).trimEnd() + "..." : rawContent;
+  // Lấy nội dung: search ưu tiên shorter_content; các variant khác hiển thị full content
+  const rawContent = useMemo(() => {
+    if (item.variant === 'search') return item.shorter_content || item.content || "";
+    return item.content || item.shorter_content || "";
+  }, [item]);
+
+  // Truncate chỉ với search
+  const displayedContent = useMemo(() => {
+    if (item.variant === 'search' && rawContent.length > 300) {
+      return rawContent.slice(0, 300).trimEnd() + "...";
+    }
+    return rawContent;
+  }, [rawContent, item.variant]);
+
+  const markdownComponents = {
+    ul: ({node, ...props}: any) => <ul className="pl-5 list-disc mb-2" {...props} />,
+    ol: ({node, ...props}: any) => <ol className="pl-5 list-decimal mb-2" {...props} />,
+    li: ({node, ...props}: any) => <li className="mb-1" {...props} />,
+    code: ({inline, className, children, ...props}: any) =>
+      inline ? (
+        <code className="px-1 rounded bg-gray-200 text-[11px]" {...props}>{children}</code>
+      ) : (
+        <pre className="bg-gray-900 text-gray-100 rounded-md p-2 overflow-x-auto text-xs mb-2">
+          <code {...props}>{children}</code>
+        </pre>
+      ),
+    a: ({node, ...props}: any) => <a className="text-blue-600 underline" target="_blank" rel="noopener noreferrer" {...props} />,
+    p: ({node, ...props}: any) => <p className="mb-2 leading-snug" {...props} />,
+    h1: ({node, ...props}: any) => <h1 className="font-bold text-lg mt-3 mb-2" {...props} />,
+    h2: ({node, ...props}: any) => <h2 className="font-semibold text-base mt-3 mb-2" {...props} />,
+    h3: ({node, ...props}: any) => <h3 className="font-semibold text-sm mt-3 mb-1" {...props} />,
+    text: ({value}: any) => (
+      <span
+        dangerouslySetInnerHTML={{
+          __html: twemoji.parse(value, {
+            folder: "svg",
+            ext: ".svg",
+            className: "inline align-[-0.125em] w-4 h-4",
+            base: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/",
+          }),
+        }}
+      />
+    ),
+  };
 
   return (
     <div className={containerClass}>
@@ -75,7 +113,7 @@ const ChatPostCard: React.FC<ChatPostCardProps> = ({ item, onOpen }) => {
         clickable ? (
           <button
             type="button"
-            onClick={() => onOpen && onOpen(item.id)}
+            onClick={() => onOpen && onOpen(item.id)} // Gọi onOpen với ID bài viết
             className={`font-semibold hover:underline block text-left ${titleStyles[item.variant]}`}
           >
             {item.title}
@@ -92,10 +130,13 @@ const ChatPostCard: React.FC<ChatPostCardProps> = ({ item, onOpen }) => {
         </div>
       )}
       {displayedContent && (
-        <div
-          className="text-xs text-gray-700 whitespace-pre-wrap break-words"
-        >
-          {displayedContent}
+        <div className="text-xs text-gray-700 whitespace-pre-wrap break-words">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={markdownComponents as any}
+          >
+            {displayedContent}
+          </ReactMarkdown>
         </div>
       )}
       {item.variant === 'delete' && (
