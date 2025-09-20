@@ -30,14 +30,14 @@ export async function createPost(data: {
   title: string;
   content: string;
   authorId: number;
-  tagParent: string;
+  parentTagName: string; // Updated to match backend parameter
   childTags?: string[];
 }) {
   return axios.post("/api/posts", {
     title: data.title,
     content: data.content,
     authorId: data.authorId,
-    parentTag: data.tagParent,
+    parentTag: data.parentTagName, // Updated to match backend parameter
     // Đảm bảo childTags luôn là mảng hoặc undefined (không null)
     ...(Array.isArray(data.childTags) && data.childTags.length > 0 ? { childTags: data.childTags } : {}),
   });
@@ -74,7 +74,7 @@ export async function updatePost(
     title: string;
     content: string;
     authorId?: number;
-    tagParent?: string;
+    parentTagName?: string; // Updated to match backend parameter
     childTags?: string[];
   }
 ) {
@@ -82,7 +82,7 @@ export async function updatePost(
     title: data.title,
     content: data.content,
     ...(data.authorId ? { authorId: data.authorId } : {}),
-    ...(data.tagParent ? { parentTag: data.tagParent } : {}),
+    ...(data.parentTagName ? { parentTag: data.parentTagName } : {}), // Updated to match backend parameter
     ...(Array.isArray(data.childTags) && data.childTags.length > 0 ? { childTags: data.childTags } : {}),
   });
 }

@@ -234,7 +234,7 @@ const ContentPost: React.FC<ContentProps> = ({
   const handleUpdate = async (data: {
     title: string;
     content: string;
-    tagParent?: string;
+    parentTagName?: string; // Updated to match backend parameter
     childTags?: string[];
   }) => {
     try {
@@ -242,12 +242,12 @@ const ContentPost: React.FC<ContentProps> = ({
         title: data.title,
         content: data.content,
         authorId: currentUserId ?? undefined,
-        tagParent: data.tagParent,
+        parentTagName: data.parentTagName, // Updated to match backend parameter
         childTags: data.childTags,
       });
       setDisplayTitle(data.title);
       setDisplayContent(data.content);
-      if (data.tagParent) setDisplayParentTags([data.tagParent]);
+      if (data.parentTagName) setDisplayParentTags([data.parentTagName]); // Updated to match backend parameter
       if (data.childTags) setDisplayChildTags(data.childTags);
       setIsEditing(false);
     } catch (err) {

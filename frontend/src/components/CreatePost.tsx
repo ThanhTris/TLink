@@ -248,53 +248,53 @@ const CreatePost: React.FC<CreatePostProps> = ({
       .filter(Boolean);
 
     try {
-      // Đảm bảo childTags là mảng string hoặc undefined
+      // Ensure childTags is an array of strings or undefined
       const payload: any = {
         title,
         content,
         authorId,
-        tagParent,
+        parentTagName: tagParent, // Updated to match backend parameter
         ...(childTags.length > 0 ? { childTags } : {}),
       };
 
       let usedPostId = postId;
       if (mode === "edit") {
-        // Gọi API cập nhật bài viết
-        if (!postId) throw new Error("Thiếu postId để cập nhật");
+        // Call API to update the post
+        if (!postId) throw new Error("Missing postId for update");
         await apiUpdatePost(postId, payload);
         usedPostId = postId;
       } else {
-        // Gọi API tạo mới bài viết
+        // Call API to create a new post
         const res = await createPost(payload);
         usedPostId = (res as any)?.data?.data;
-        if (!usedPostId) throw new Error("Không lấy được postId");
+        if (!usedPostId) throw new Error("Failed to retrieve postId");
       }
 
-      // 2. Upload ảnh mới (nếu có)
+      // 2. Upload new images (if any)
       for (const file of imageFiles) {
         await uploadPostImage(usedPostId, file);
       }
 
-      // 3. Upload file tài liệu mới (nếu có)
+      // 3. Upload new document files (if any)
       for (const file of docFiles) {
         await uploadPostFile(usedPostId, file);
       }
 
-      // 4. Gọi callback khi xong
+      // 4. Call the callback when done
       onSubmit?.({
         title,
         content,
-        authorId, 
-        tagParent,
+        authorId,
+        tagParent: tagParent, // Updated to match backend parameter
         ...(childTags.length > 0 ? { childTags } : {}),
         imageFiles: [],
         docFiles: [],
-        // Truyền đúng định dạng cho FE (url hoặc object {name, url})
+        // Pass the correct format to the frontend (url or object {name, url})
         existingImageUrls: keptExistingImageUrls.filter((url): url is string => url !== null),
         existingDocUrls: existingDocUrls,
       });
     } catch (err) {
-      alert((mode === "edit" ? "Cập nhật" : "Tạo") + " bài viết thất bại: " + (err as any)?.message);
+      alert((mode === "edit" ? "Update" : "Create") + " post failed: " + (err as any)?.message);
     }
   };
 
