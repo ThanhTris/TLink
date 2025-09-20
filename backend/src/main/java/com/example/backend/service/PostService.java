@@ -48,11 +48,8 @@ public class PostService {
     @Transactional
     public ApiResponseDTO createPost(PostCreateRequestDTO request) {
         try {
-            // Pass parentTag name directly
-            String parentTagName = request.getParentTag();
-
-            // Pass childTags names directly as a comma-separated string
-            String childTagNamesCsv = String.join(",", request.getChildTags());
+            // Convert childTags list to a comma-separated string
+            String childTagNamesCsv = String.join(", ", request.getChildTags());
 
             // Call stored procedure
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_create_post");
@@ -65,7 +62,7 @@ public class PostService {
             query.setParameter(1, request.getAuthorId());
             query.setParameter(2, request.getTitle());
             query.setParameter(3, request.getContent());
-            query.setParameter(4, parentTagName);
+            query.setParameter(4, request.getParentTag());
             query.setParameter(5, childTagNamesCsv);
 
             Object result = query.getSingleResult();
@@ -81,78 +78,22 @@ public class PostService {
     @Transactional
     public ApiResponseDTO updatePost(Long postId, PostCreateRequestDTO request) {
         try {
-            // Kiểm tra postId có tồn tại không
-            if (!postRepository.existsById(postId)) {
-                return new ApiResponseDTO(false, "Bài viết không tồn tại", null, "POST_NOT_FOUND");
-            }
-            // Map parentTag code to id
-            Long parentTagId = null;
-            if (request.getParentTag() != null && !request.getParentTag().isEmpty()) {
-                List<?> ids = entityManager.createNativeQuery("SELECT id FROM parent_tags WHERE code = :code")
-                        .setParameter("code", request.getParentTag())
-                        .getResultList();
-                if (!ids.isEmpty()) {
-                    parentTagId = ((Number) ids.get(0)).longValue();
-                }
-            }
-            // Map childTags code list to CSV id string
-            String childTagIdsCsv = "";
-            if (request.getChildTags() != null && !request.getChildTags().isEmpty()) {
-                List<String> tags = request.getChildTags();
-                Long parentTagIdForChild = null;
-                if (request.getParentTag() != null && !request.getParentTag().isEmpty()) {
-                    List<?> parentIds = entityManager.createNativeQuery("SELECT id FROM parent_tags WHERE code = :code")
-                        .setParameter("code", request.getParentTag())
-                        .getResultList();
-                    if (!parentIds.isEmpty()) {
-                        parentTagIdForChild = ((Number) parentIds.get(0)).longValue();
-                    }
-                }
-                for (String tagCode : tags) {
-                    List<?> exist = entityManager.createNativeQuery("SELECT id FROM child_tags WHERE code = :code")
-                        .setParameter("code", tagCode)
-                        .getResultList();
-                    if (exist.isEmpty() && parentTagIdForChild != null) {
-                        entityManager.createNativeQuery(
-                            "INSERT INTO child_tags (code, name, parent_tag_id) VALUES (:code, :name, :parentTagId)")
-                            .setParameter("code", tagCode)
-                            .setParameter("name", tagCode)
-                            .setParameter("parentTagId", parentTagIdForChild)
-                            .executeUpdate();
-                    }
-                }
-                StringBuilder sql = new StringBuilder("SELECT id FROM child_tags WHERE code IN (");
-                for (int i = 0; i < tags.size(); i++) {
-                    if (i > 0) sql.append(",");
-                    sql.append(":code").append(i);
-                }
-                sql.append(")");
-                var q = entityManager.createNativeQuery(sql.toString());
-                for (int i = 0; i < tags.size(); i++) {
-                    q.setParameter("code" + i, tags.get(i));
-                }
-                List<?> ids = q.getResultList();
-                StringBuilder sb = new StringBuilder();
-                for (Object id : ids) {
-                    if (sb.length() > 0) sb.append(",");
-                    sb.append(id.toString());
-                }
-                childTagIdsCsv = sb.toString();
-            }
+            // Convert childTags list to a comma-separated string
+            String childTagNamesCsv = String.join(", ", request.getChildTags());
 
-            // Sử dụng stored procedure mới
+            // Call stored procedure
             StoredProcedureQuery query = entityManager.createStoredProcedureQuery("sp_update_post");
             query.registerStoredProcedureParameter(1, Long.class, jakarta.persistence.ParameterMode.IN); // p_post_id
             query.registerStoredProcedureParameter(2, String.class, jakarta.persistence.ParameterMode.IN); // p_title
             query.registerStoredProcedureParameter(3, String.class, jakarta.persistence.ParameterMode.IN); // p_content
-            query.registerStoredProcedureParameter(4, Long.class, jakarta.persistence.ParameterMode.IN); // p_parent_tag_id
-            query.registerStoredProcedureParameter(5, String.class, jakarta.persistence.ParameterMode.IN); // p_child_tag_ids
+            query.registerStoredProcedureParameter(4, String.class, jakarta.persistence.ParameterMode.IN); // p_parent_tag_name
+            query.registerStoredProcedureParameter(5, String.class, jakarta.persistence.ParameterMode.IN); // p_child_tag_names
 
             query.setParameter(1, postId);
             query.setParameter(2, request.getTitle());
             query.setParameter(3, request.getContent());
-            query.setParameter(4, parentTagId);
-            query.setParameter(5, childTagIdsCsv);
+            query.setParameter(4, request.getParentTag());
+            query.setParameter(5, childTagNamesCsv);
 
             query.execute();
 
