@@ -20,7 +20,7 @@ const Chatbox: React.FC = () => {
   const [currentAction, setCurrentAction] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<string | null>(null);
   const chatboxRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContentRef = useRef<HTMLDivElement>(null);
 
   // Lấy userId từ localStorage nếu có
@@ -288,9 +288,15 @@ const Chatbox: React.FC = () => {
                 </div>
               ) : (
                 <div key={idx} className={msg.role === "user" ? "text-right mb-2" : "text-left mb-2"}>
-                  <span className={msg.role === "user"
+                  <span className={`${msg.role === "user"
                       ? "inline-block bg-blue-100 text-blue-900 px-3 py-2 rounded-2xl max-w-[80%]"
-                      : "inline-block bg-gray-100 text-gray-900 px-3 py-2 rounded-2xl max-w-[80%]"}
+                      : "inline-block bg-gray-100 text-gray-900 px-3 py-2 rounded-2xl max-w-[80%]"} overflow-hidden`}
+                    style={{
+                      display: "-webkit-box",
+                      WebkitBoxOrient: "vertical",
+                      WebkitLineClamp: 4,
+                      whiteSpace: "normal"
+                    }}
                   >
                     {msg.content}
                   </span>
@@ -366,26 +372,36 @@ const Chatbox: React.FC = () => {
                 </div>
               )}
             </div>
-            <div className="p-3 border-t bg-gray-50">
+            <div className="p-3 bg-gray-50">
               <form className="relative flex items-center" onSubmit={handleSubmit}>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  className="flex-1 rounded-full border px-3 py-2 pr-10 outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  placeholder={
-                    tagMode.active && tagMode.step === 'edit_parent_tag'
-                      ? 'Chọn tag cha ở dưới'
-                      : tagMode.active && tagMode.step === 'edit_child_tag'
-                      ? 'Chọn tag con ở dưới'
-                      : 'Nhập tin nhắn...'
-                  }
-                  disabled={tagMode.active}
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) handleSubmit(); }}
-                />
+                <div className="flex-1">
+                  <textarea
+                    ref={inputRef}
+                    placeholder={
+                      tagMode.active && tagMode.step === 'edit_parent_tag'
+                        ? 'Chọn tag cha ở dưới'
+                        : tagMode.active && tagMode.step === 'edit_child_tag'
+                        ? 'Chọn tag con ở dưới'
+                        : 'Nhập tin nhắn...'
+                    }
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        handleSubmit(e);
+                      }
+                    }}
+                    className="w-full py-2 px-3 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    style={{
+                      minHeight: "1rem", // Minimum height for multi-line input
+                      maxHeight: "8rem", // Maximum height for 5 lines
+                      overflowY: "auto", // Add scroll if content exceeds max height
+                    }}
+                    rows={Math.min(5, input.split("\n").length)} // Dynamically adjust rows
+                  />
+                </div>
                 <Button
-                  className="absolute right-5 text-blue-600 hover:text-blue-700 p-1 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-40"
+                  className="absolute right-3 bottom-3 text-blue-600 hover:text-blue-700 p-1 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   aria-label="Gửi"
                   onClick={handleSubmit}
                   disabled={tagMode.active && tagMode.step === 'edit_parent_tag'}
