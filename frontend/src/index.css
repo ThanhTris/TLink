@@ -78,3 +78,26 @@ button:focus-visible {
 .sidebar-hide-scrollbar::-webkit-scrollbar {
   display: none;              /* Chrome, Safari, Opera */
 }
+
+textarea::-webkit-scrollbar {
+  width: 6px; /* Độ rộng thanh cuộn */
+}
+
+textarea::-webkit-scrollbar-track {
+  background: transparent; /* Nền trong suốt */
+}
+
+textarea::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.3); /* Thanh kéo màu đen mờ 30% */
+  border-radius: 3px; /* Bo góc mềm */
+}
+
+/* Remove scrollbar buttons (arrows) */
+textarea::-webkit-scrollbar-button {
+  display: none; /* Ẩn mũi nhọn ở đầu và cuối thanh cuộn */
+}
+
+textarea {
+  scrollbar-width: thin; /* Thanh cuộn mảnh */
+  scrollbar-color: rgba(0, 0, 0, 0.3) transparent; /* Màu thanh kéo và nền */
+}
