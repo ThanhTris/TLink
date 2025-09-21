@@ -60,7 +60,9 @@ const ChatPostCard: React.FC<ChatPostCardProps> = ({ item, onOpen }) => {
 
   const allTags = [...pTags, ...cTags].filter(Boolean);
   const clickable = !!item.id && item.variant !== 'create';
-  const containerClass = `chat-post-item px-3 py-2 rounded-2xl max-w-[80%] mb-2 text-left ${variantStyles[item.variant]}`;
+  const containerClass = `chat-post-item px-3 py-2 rounded-2xl max-w-[80%] text-left ${variantStyles[item.variant]} ${
+    clickable ? "cursor-pointer hover:shadow-md" : ""
+  }`;
 
   // Lấy nội dung: search ưu tiên shorter_content; các variant khác hiển thị full content
   const rawContent = useMemo(() => {
@@ -108,24 +110,24 @@ const ChatPostCard: React.FC<ChatPostCardProps> = ({ item, onOpen }) => {
   };
 
   return (
-    <div className={containerClass}>
+    <div
+      className={containerClass}
+      onClick={() => clickable && onOpen && onOpen(item.id)} // Make the entire card clickable
+    >
       {item.title && (
-        clickable ? (
-          <button
-            type="button"
-            onClick={() => onOpen && onOpen(item.id)} // Gọi onOpen với ID bài viết
-            className={`font-semibold hover:underline block text-left ${titleStyles[item.variant]}`}
-          >
-            {item.title}
-          </button>
-        ) : (
-          <div className={`font-semibold mb-1 ${titleStyles[item.variant]}`}>{item.title}</div>
-        )
+        <div className={`font-semibold mb-1 ${titleStyles[item.variant]}`}>
+          {item.title}
+        </div>
       )}
       {allTags.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-1">
           {allTags.map((t, i) => (
-            <span key={i} className={`inline-block text-[10px] font-semibold rounded-full px-2 py-0.5 ${tagColor[item.variant]}`}>#{t}</span>
+            <span
+              key={i}
+              className={`inline-block text-[10px] font-semibold rounded-full px-2 py-0.5 ${tagColor[item.variant]}`}
+            >
+              #{t}
+            </span>
           ))}
         </div>
       )}
@@ -139,9 +141,7 @@ const ChatPostCard: React.FC<ChatPostCardProps> = ({ item, onOpen }) => {
           </ReactMarkdown>
         </div>
       )}
-      {item.variant === 'delete' && (
-        <div className="text-[10px] text-red-600 mt-1">Bài viết đã bị xóa.</div>
-      )}
+     
     </div>
   );
 };
