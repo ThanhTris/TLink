@@ -53,7 +53,7 @@ const ReplyIteam: React.FC<ReplyIteamProps> = ({
   }, [hasPrefix, effectivePrefix]);
 
   // focus input khi cần
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     if (autoFocus && inputRef.current) {
       inputRef.current.focus();
@@ -81,13 +81,12 @@ const ReplyIteam: React.FC<ReplyIteamProps> = ({
           }}
         />
       )}
-      <div className="flex items-center justify-center flex-1">
+      <div className="flex items-start justify-center flex-1">
         {!hideAvatar && (
           <img
             src={currentUserAvatar}
             alt="me"
             className="w-10 h-10 rounded-full mr-3 border-3 border-blue-400"
-            style={{ position: "relative", zIndex: 1 }}
           />
         )}
         <div className="relative flex-1">
@@ -109,9 +108,8 @@ const ReplyIteam: React.FC<ReplyIteamProps> = ({
             {hasPrefix ? effectivePrefix : ""}
           </span>
 
-          <input
+          <textarea
             ref={inputRef}
-            type="text"
             // Ẩn placeholder khi có prefix để con trỏ hiện ngay sau khoảng trắng
             placeholder={hasPrefix ? "" : placeholder}
             value={displayValue}
@@ -141,17 +139,25 @@ const ReplyIteam: React.FC<ReplyIteamProps> = ({
                 onChange(value.slice(effectivePrefix.length));
               }
             }}
-            className="w-full py-2 px-3 pr-10 border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full py-2 px-3 border rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             style={{
               paddingLeft: hasPrefix ? Math.ceil(prefixWidth) + 16 : undefined,
+              minHeight: "1rem", // Minimum height for multi-line input
+              maxHeight: "20rem", // Maximum height for 18 lines
+              overflowY: "auto", // Add scroll if content exceeds max height
+              
             }}
+            rows={Math.min(18, displayValue.split("\n").length)} // Dynamically adjust rows
           />
-          <Button
-            onClick={onSubmit}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-700 p-1 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <SendHorizontal size={18} />
-          </Button>
+          {/* Icon inside the input box */}
+          <div className="absolute right-3 bottom-3">
+            <Button
+              onClick={onSubmit}
+              className="text-blue-600 hover:text-blue-700 p-1 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <SendHorizontal size={18} />
+            </Button>
+          </div>
         </div>
       </div>
     </div>
