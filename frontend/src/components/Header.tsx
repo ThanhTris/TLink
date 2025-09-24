@@ -3,6 +3,8 @@ import SearchBar from "./SearchBar";
 import Button from "./Button";
 import { ChevronDown } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
+import logo from '../assets/logo.png'; // Import the logo image
+
 
 interface HeaderProps {
   isLoggedIn: boolean;
@@ -40,12 +42,12 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, username, avatar }) => {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex flex-row items-center h-16 p-4 bg-white border-b shadow-md border-black/10">
-      <h1
-        className="text-xl font-bold cursor-pointer"
+      <img
+        src={logo}
+        alt="ForumTech Logo"
+        className="h-12 cursor-pointer ml-20"
         onClick={() => navigate("/")}
-      >
-        ForumTech
-      </h1>
+      />
       <SearchBar />
       <div className="flex items-center justify-around ml-auto min-w-70 ">
         {isLoggedIn ? (
