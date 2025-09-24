@@ -1,6 +1,42 @@
 @import "tailwindcss";
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* 🎯 Màu chính (Primary Palette) */
+  --color-primary-blue: #3B82F6;   /* xanh dương sáng */
+  --color-primary-purple: #8B5CF6; /* tím nhạt hiện đại */
+  --color-primary-cyan: #06B6D4;   /* xanh ngọc mát */
+
+  /* 🌈 Gradient dùng cho background */
+  --gradient-glass: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.6) 0%,    /* xanh dương */
+    rgba(139, 92, 246, 0.6) 50%,   /* tím */
+    rgba(6, 182, 212, 0.6) 100%    /* xanh ngọc */
+  );
+
+  /* 🧊 Glassmorphism effect */
+  --glass-bg: rgba(255, 255, 255, 0.15);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-blur: 20px;
+
+  /* ✨ Text */
+  --text-main: rgba(30, 41, 59, 0.9);   /* gần đen */
+  --text-sub: rgba(30, 41, 59, 0.7);    /* xám nhạt */
+  --text-inverse: rgba(255, 255, 255, 0.95);
+
+  /* 🎯 Accent colors (like, tag, button) */
+  --color-accent-pink: #EC4899;   /* hồng neon */
+  --color-accent-green: #22C55E;  /* xanh lá nhấn */
+  --color-accent-orange: #F97316; /* cam nổi bật */
+
+  /* 🪟 Background layers */
+  --bg-body: var(--gradient-glass);
+  --bg-card: rgba(255, 255, 255, 0.25);
+  --bg-comment: rgba(255, 255, 255, 0.2);
+  --bg-sidebar: rgba(255, 255, 255, 0.18);
+  --bg-header: rgba(255, 255, 255, 0.2);
+
+  /* Update font stack to modern fonts */
+  font-family: "Inter", "Noto Sans JP", "Noto Sans", sans-serif;
   line-height: 1.5;
   font-weight: 400;
   width: 100%;
@@ -32,6 +68,12 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: var(--bg-body);
+  background-attachment: fixed;
+  background-size: cover;
+
+  /* Ensure body uses the updated font stack */
+  font-family: inherit;
 }
 
 h1 {
@@ -100,4 +142,27 @@ textarea::-webkit-scrollbar-button {
 textarea {
   scrollbar-width: thin; /* Thanh cuộn mảnh */
   scrollbar-color: rgba(0, 0, 0, 0.3) transparent; /* Màu thanh kéo và nền */
+}
+
+.post-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+}
+
+.comment {
+  background: var(--bg-comment);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+}
+
+.sidebar {
+  background: var(--bg-sidebar);
+  backdrop-filter: blur(15px);
+}
+
+.header {
+  background: var(--bg-header);
+  backdrop-filter: blur(20px);
 }
