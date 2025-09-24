@@ -1,7 +1,8 @@
 @import "tailwindcss";
+
 :root {
   /* 🎯 Màu chính (Primary Palette) */
-  --color-primary-blue: #3B82F6;   /* xanh dương sáng */
+  --color-primary-blue: 59, 130, 246; /* RGB value for blue */
   --color-primary-purple: #8B5CF6; /* tím nhạt hiện đại */
   --color-primary-cyan: #06B6D4;   /* xanh ngọc mát */
 
@@ -19,6 +20,7 @@
   --glass-blur: 20px;
 
   /* ✨ Text */
+  --text-primary: rgba(var(--color-primary-blue), 0.7); 
   --text-main: rgba(30, 41, 59, 0.9);   /* gần đen */
   --text-sub: rgba(30, 41, 59, 0.7);    /* xám nhạt */
   --text-inverse: rgba(255, 255, 255, 0.95);
@@ -57,7 +59,6 @@
 
 a {
   font-weight: 500;
-  /* color: #646cff; */
   text-decoration: inherit;
 }
 a:hover {
@@ -71,8 +72,6 @@ body {
   background: var(--bg-body);
   background-attachment: fixed;
   background-size: cover;
-
-  /* Ensure body uses the updated font stack */
   font-family: inherit;
 }
 
@@ -80,25 +79,6 @@ h1 {
   font-size: 3.2em;
   line-height: 1.1;
 }
-
-/* button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}*/
 
 @media (prefers-color-scheme: light) {
   :root {
@@ -108,10 +88,8 @@ button:focus-visible {
   a:hover {
     color: #747bff;
   }
-  /* button {
-    background-color: #f9f9f9;
-  } */
 }
+
 /* Ẩn thanh cuộn trên mọi trình duyệt */
 .sidebar-hide-scrollbar {
   scrollbar-width: none;      /* Firefox */
@@ -132,11 +110,6 @@ textarea::-webkit-scrollbar-track {
 textarea::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.3); /* Thanh kéo màu đen mờ 30% */
   border-radius: 3px; /* Bo góc mềm */
-}
-
-/* Remove scrollbar buttons (arrows) */
-textarea::-webkit-scrollbar-button {
-  display: none; /* Ẩn mũi nhọn ở đầu và cuối thanh cuộn */
 }
 
 textarea {
@@ -165,4 +138,41 @@ textarea {
 .header {
   background: var(--bg-header);
   backdrop-filter: blur(20px);
+}
+
+.bg-glass-bg {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+}
+
+.glassmorphism {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+}
+
+.hover-glass:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.hover-text-primary:hover {
+  --text-primary: rgba(var(--color-primary-blue), 1);
+}
+
+.avatar-glass {
+  border: 3px solid rgba(255, 255, 255, 0.5); /* Brighter border */
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  border-radius: 50%;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2); /* Subtle shadow for depth */
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glassmorphism:hover .avatar-glass {
+  border-color: rgba(255, 255, 255, 0.8); /* Brighter border on parent hover */
+  box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.3); /* Stronger shadow on parent hover */
 }
