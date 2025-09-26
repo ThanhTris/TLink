@@ -15,7 +15,7 @@ const SearchBar: React.FC = () => {
 
   return (
     <form
-      className="flex items-center glassmorphism rounded-full px-4 py-2 mx-8 max-w-md border border-white/20 backdrop-blur-sm"
+      className="flex items-center bg-[rgba(255,255,255,0.25)] rounded-full px-4 py-2 mx-8 max-w-md border border-white/20 backdrop-blur-sm"
       onSubmit={handleSearch}
     >
       <Search className="text-gray-400 mr-2" />

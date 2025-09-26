@@ -46,13 +46,14 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, username, avatar }) => {
   ];
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 flex flex-row items-center justify-between h-16 px-24 bg-header backdrop-filter backdrop-blur-[20px] shadow-md">
+    <header className="fixed top-0 left-0 right-0 z-50 flex flex-row items-center justify-between h-16 px-24 bg-header backdrop-filter backdrop-blur-[20px] shadow-md border-b border-white/25">
       <div className="flex items-center gap-6">
         <img
           src={logo}
           alt="ForumTech Logo"
           className="h-12 cursor-pointer"
           onClick={() => navigate("/")}
+          // style={{ filter: "brightness(0) invert(1)" }} /* Logo màu trắng */
         />
         <SearchBar />
       </div>
@@ -60,19 +61,19 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, username, avatar }) => {
         {isLoggedIn ? (
           <div className="relative" ref={menuRef}>
             <Button
-              className="glassmorphism flex items-center gap-4 p-2 rounded-lg cursor-pointer focus:outline-none hover:border-white/60 hover-glass transition"
+              className="flex items-center gap-3 p-2 transition rounded-lg focus:outline-none hover-glass"
               onClick={() => setOpenMenu((v) => !v)}
             >
               <img
                 src={avatar}
                 alt="User Avatar"
-                className="object-cover w-10 h-10 avatar-glass transition"
+                className="object-cover transition w-9 h-9 avatar-glass"
               />
-              <span className="text-[color:var(--text-main)] font-medium text-xl">{username}</span>
+              <span className="text-[color:var(--text-main)] font-medium text-base">{username}</span>
               <ChevronDown className="w-5 h-5 text-[color:var(--text-main)]" />
             </Button>
             {openMenu && (
-              <div className="absolute left-0 z-50 py-3 mt-2 glassmorphism shadow-lg shadow-black/10 hover:cursor-pointer w-60 rounded-xl backdrop-filter backdrop-blur-md border border-white/20">
+              <div className="absolute left-0 z-50 py-3 mt-2 user-menu hover:cursor-pointer w-60">
                 {menuItems.map((item) => (
                   <a
                     key={item.href}
@@ -83,7 +84,7 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, username, avatar }) => {
                   </a>
                 ))}
                 <Button
-                  className="block w-full px-4 py-2 text-left text-[color:var(--color-accent-pink)] font-semibold hover:bg-white/20 rounded-lg transition cursor-pointer"
+                  className="block w-full px-4 py-2 font-semibold text-left text-red-500 transition rounded-lg hover:bg-white/20"
                   onClick={handleLogin}
                 >
                   Đăng xuất
@@ -94,13 +95,13 @@ const Header: React.FC<HeaderProps> = ({ isLoggedIn, username, avatar }) => {
         ) : (
           <>
             <Button
-              className="glassmorphism font-medium px-6 py-2.5 w-34 rounded-full shadow-none hover-glass transition text-[color:var(--text-primary)] hover-text-primary"
+              className="bg-[rgba(255,255,255,0.15)] backdrop-blur-md border border-[rgba(255,255,255,0.3)] text-[color:var(--text-primary)] font-medium px-6 py-2.5 w-36 rounded-full shadow-2xl transition hover:bg-[var(--color-primary-blue)] hover:text-white"
               onClick={handleRegister}
             >
               Đăng ký
             </Button>
             <Button
-              className="glassmorphism text-[color:rgba(255,255,255,0.7)] font-medium px-6 py-2.5 w-34 rounded-full shadow-none hover-glass transition hover:text-[color:var(--text-inverse)]"
+              className="bg-[rgba(255,255,255,0.15)] backdrop-blur-md border border-[rgba(255,255,255,0.3)] text-[color:var(--color-primary-purple)] font-medium px-6 py-2.5 w-36 rounded-full shadow-2xl transition hover:bg-[var(--color-primary-purple)] hover:text-white"
               onClick={handleLogin}
             >
               Đăng nhập
