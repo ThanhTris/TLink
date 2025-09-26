@@ -2,16 +2,16 @@
 
 :root {
   /* 🎯 Màu chính (Primary Palette) */
-  --color-primary-blue: 59, 130, 246; /* RGB value for blue */
+  --color-primary-blue: #3B82F6; /* RGB value for blue */
   --color-primary-purple: #8B5CF6; /* tím nhạt hiện đại */
   --color-primary-cyan: #06B6D4;   /* xanh ngọc mát */
 
   /* 🌈 Gradient dùng cho background */
   --gradient-glass: linear-gradient(
     135deg,
-    rgba(59, 130, 246, 0.6) 0%,    /* xanh dương */
-    rgba(139, 92, 246, 0.6) 50%,   /* tím */
-    rgba(6, 182, 212, 0.6) 100%    /* xanh ngọc */
+    rgba(59, 130, 246, 0.2) 0%,    /* xanh dương */
+    rgba(139, 92, 246, 0.2) 50%,   /* tím */
+    rgba(6, 182, 212, 0.2) 100%    /* xanh ngọc */
   );
 
   /* 🧊 Glassmorphism effect */
@@ -20,10 +20,11 @@
   --glass-blur: 20px;
 
   /* ✨ Text */
-  --text-primary: rgba(var(--color-primary-blue), 0.7); 
+  --text-primary: rgba(59, 130, 246, 1); /* Ensure it's an RGBA value */
   --text-main: rgba(30, 41, 59, 0.9);   /* gần đen */
   --text-sub: rgba(30, 41, 59, 0.7);    /* xám nhạt */
   --text-inverse: rgba(255, 255, 255, 0.95);
+  --text-title: rgba(30, 41, 59, 0.95); /* đen gần đậm */
 
   /* 🎯 Accent colors (like, tag, button) */
   --color-accent-pink: #EC4899;   /* hồng neon */
@@ -32,10 +33,18 @@
 
   /* 🪟 Background layers */
   --bg-body: var(--gradient-glass);
-  --bg-card: rgba(255, 255, 255, 0.25);
+  --bg-card: rgba(255, 255, 255, 0.4); /* sáng nhất */
   --bg-comment: rgba(255, 255, 255, 0.2);
-  --bg-sidebar: rgba(255, 255, 255, 0.18);
-  --bg-header: rgba(255, 255, 255, 0.2);
+  --bg-sidebar: rgba(255, 255, 255, 0.12); /* tối hơn header */
+  --bg-header: rgba(255, 255, 255, 0.20); /* sáng hơn */
+
+  /* Menu styles */
+  --menu-bg: rgba(255, 255, 255, 0.35); /* nền menu dropdown */
+  --menu-border: rgba(255, 255, 255, 0.4); /* viền menu dropdown */
+  --menu-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); /* shadow menu dropdown */
+
+  /* Shadow */
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.15); /* shadow cho card */
 
   /* Update font stack to modern fonts */
   font-family: "Inter", "Noto Sans JP", "Noto Sans", sans-serif;
@@ -62,7 +71,7 @@ a {
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: var(--color-primary-blue);
 }
 
 body {
@@ -78,6 +87,12 @@ body {
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
+  color: var(--text-title);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); /* text shadow nhẹ */
+}
+
+h2 {
+  color: var(--text-main); /* tiêu đề đậm hơn */
 }
 
 @media (prefers-color-scheme: light) {
@@ -119,9 +134,9 @@ textarea {
 
 .post-card {
   background: var(--bg-card);
-  backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
+  backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: var(--shadow-card);
 }
 
 .comment {
@@ -132,12 +147,15 @@ textarea {
 
 .sidebar {
   background: var(--bg-sidebar);
-  backdrop-filter: blur(15px);
+  backdrop-filter: blur(18px);
+  border-right: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .header {
   background: var(--bg-header);
   backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* shadow nhẹ */
 }
 
 .bg-glass-bg {
@@ -159,9 +177,7 @@ textarea {
   transition: background 0.3s ease, border-color 0.3s ease;
 }
 
-.hover-text-primary:hover {
-  --text-primary: rgba(var(--color-primary-blue), 1);
-}
+
 
 .avatar-glass {
   border: 3px solid rgba(255, 255, 255, 0.5); /* Brighter border */
@@ -175,4 +191,11 @@ textarea {
 .glassmorphism:hover .avatar-glass {
   border-color: rgba(255, 255, 255, 0.8); /* Brighter border on parent hover */
   box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.3); /* Stronger shadow on parent hover */
+}
+
+.user-menu {
+  background: var(--menu-bg);
+  border: 1px solid var(--menu-border);
+  box-shadow: var(--menu-shadow);
+  border-radius: 12px;
 }
