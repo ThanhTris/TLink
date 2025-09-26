@@ -280,9 +280,9 @@ const ContentPost: React.FC<ContentProps> = ({
   }
 
   return (
-    <div className="relative w-full px-5 pt-5 pb-2 mt-6 bg-gray-200 shadow-sm rounded-xl">
+    <div className="relative w-full px-5 pt-5 pb-2 mt-6 bg-[var(--bg-card)] shadow-[var(--shadow-card)] border border-[rgba(255,255,255,0.45)] rounded-xl">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-lg font-semibold line-clamp-1">{displayTitle}</h2>
+        <h2 className="text-lg font-semibold text-[var(--text-main)] line-clamp-1">{displayTitle}</h2>
         <div className="flex items-center gap-1">
           <div className="relative">
             <Button
@@ -386,12 +386,12 @@ const ContentPost: React.FC<ContentProps> = ({
           {timeAgoDisplay}
         </span>
         {displayParentTags && displayParentTags.map((tag, idx) => (
-          <span key={`parent-tag-${idx}`} className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded-full">
+          <span key={`parent-tag-${idx}`} className="px-2 py-1 text-xs text-[var(--color-accent-green)] bg-[rgba(255,255,255,0.25)] rounded-full">
             #{tag}
           </span>
         ))}
         {displayChildTags && displayChildTags.map((tag, idx) => (
-          <span key={`child-tag-${idx}`} className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded-full">
+          <span key={`child-tag-${idx}`} className="px-2 py-1 text-xs text-[var(--color-accent-orange)] bg-[rgba(255,255,255,0.25)] rounded-full">
             #{tag}
           </span>
         ))}
