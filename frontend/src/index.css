@@ -39,7 +39,7 @@
   --bg-header: rgba(255, 255, 255, 0.20); /* sáng hơn */
 
   /* Menu styles */
-  --menu-bg: rgba(255, 255, 255, 0.35); /* nền menu dropdown */
+  --menu-bg: rgba(255, 255, 255, 1); /* nền menu dropdown */
   --menu-border: rgba(255, 255, 255, 0.4); /* viền menu dropdown */
   --menu-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); /* shadow menu dropdown */
 
@@ -198,4 +198,12 @@ textarea {
   border: 1px solid var(--menu-border);
   box-shadow: var(--menu-shadow);
   border-radius: 12px;
+}
+
+.recommendation-item:hover {
+  border-color: transparent;
+}
+
+.recommendation-item:hover + .recommendation-item {
+  border-top-color: transparent;
 }
