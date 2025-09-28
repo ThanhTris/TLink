@@ -5,7 +5,7 @@ import PostModal from "./PostModal";
 import ChatPostCard from "./ChatPostCard";
 import type { ChatDisplayItem } from "./ChatPostCard";
 
-const API_URL = "http://localhost:5678/webhook-test/chatbox";
+const API_URL = "http://localhost:5678/webhook/chatbox";
 
 type ChatMessage = { role: "user" | "bot"; content: string; card?: ChatDisplayItem };
 
@@ -15,6 +15,9 @@ const Chatbox: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [postModalId, setPostModalId] = useState<number | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  // Add state to track action/step coming from the API
+  const [action, setAction] = useState<string | null>(null);
+  const [step, setStep] = useState<string | null>(null);
   const chatboxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContentRef = useRef<HTMLDivElement>(null);
@@ -58,6 +61,12 @@ const Chatbox: React.FC = () => {
   const processApiResponse = (raw: any) => {
     const payload = Array.isArray(raw) ? raw[0] : raw;
     const newMessages: ChatMessage[] = [];
+
+    // Capture action/step from response for next turn
+    if (payload) {
+      setAction(payload.action ?? null);
+      setStep(payload.step ?? null);
+    }
 
     if (payload?.message) {
       newMessages.push({ role: "bot", content: payload.message });
@@ -124,7 +133,8 @@ const Chatbox: React.FC = () => {
     setIsTyping(true);
 
     try {
-      const data = await sendRequest({ userId, action: null, step: null, chatInput: userMsg });
+      // Use current action/step from state instead of always null
+      const data = await sendRequest({ action, step, chatInput: userMsg });
       setIsTyping(false);
       processApiResponse(data);
     } catch {
@@ -144,18 +154,18 @@ const Chatbox: React.FC = () => {
   }, [open]);
 
   return (
-    <div style={{ position: "fixed", right: 24, bottom: 0, zIndex: 1000 }}>
+    <div style={{ position: "fixed", right: 24, bottom: 24, zIndex: 1000 }}>
       {open && (
         <>
           <div ref={chatboxRef} className="w-96 h-96 bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
             <div className="flex items-center justify-between px-4 py-2 bg-blue-600 text-white">
-              <span className="font-semibold">Hỗ trợ AI</span>
+              <span className="font-semibold">Hộp thoại với AI</span>
               <Button onClick={() => setOpen(false)} className="text-white text-xl font-bold">×</Button>
             </div>
             <div ref={chatContentRef} className="flex-1 p-4 overflow-y-auto">
-              {messages.length === 0 && (
-                <div className="text-gray-500 text-sm text-center mt-8">Chatbot AI sẵn sàng hỗ trợ bạn!</div>
-              )}
+              {/* {messages.length === 0 && (
+                <div className="text-gray-500 text-sm text-center mt-8">Chatbox AI sẵn sàng hỗ trợ bạn!</div>
+              )} */}
               {messages.map((msg, idx) => (
                 <div key={idx} className={`flex items-end justify-center mb-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                   {msg.role === "bot" && (
