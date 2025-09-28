@@ -279,6 +279,30 @@ const ContentPost: React.FC<ContentProps> = ({
     return (md || "").split(/\r?\n/).length;
   }
 
+  // Helper: loại bỏ markdown để lấy plain text
+  function stripMarkdown(md: string) {
+    return (md || "")
+      // bỏ ảnh ![alt](url)
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+      // giữ text của link [text](url)
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+      // bỏ tiêu đề, ký tự nhấn mạnh, code, gạch, blockquote
+      .replace(/[#>*_`~\-]+/g, "")
+      // bỏ bullet/ordered list ở đầu dòng
+      .replace(/^\s*[-*+]\s+/gm, "")
+      .replace(/^\s*\d+\.\s+/gm, "")
+      // gộp xuống dòng thành khoảng trắng
+      .replace(/\r?\n+/g, " ")
+      .trim();
+  }
+
+  // Helper: cắt ngắn và thêm "..."
+  function makeExcerpt(md: string, maxChars = 200) {
+    const plain = stripMarkdown(md);
+    if (plain.length <= maxChars) return plain;
+    return (plain.slice(0, maxChars).replace(/\s+\S*$/, "") + "...").trim();
+  }
+
   return (
     <div className="relative w-full px-5 pt-5 pb-2 mt-6 bg-[var(--bg-card)] shadow-[var(--shadow-card)] border border-[rgba(255,255,255,0.45)] rounded-xl">
       <div className="flex items-center justify-between mb-1">
@@ -401,28 +425,26 @@ const ContentPost: React.FC<ContentProps> = ({
         <div className="mb-3 text-sm italic text-gray-600">Bài viết đã bị ẩn.</div>
       ) : (
         <>
-          <div
-            className={`text-gray-800 mb-3 relative transition-all duration-200 ${
-              !isExpanded ? "line-clamp-3 min-h-[36px] max-h-[72px] overflow-hidden" : ""
-            }`}
-            style={{ wordBreak: "break-word" }}
-          >
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={markdownComponents}
-            >
-              {displayContent}
-            </ReactMarkdown>
-            {/* Hiện Read More nếu markdown có trên 3 dòng hoặc dài hơn 200 ký tự */}
-            {!isExpanded && (countMarkdownLines(displayContent) > 3 || (displayContent && displayContent.length > 200)) && (
-              <span
-                className="absolute bottom-0 right-0 pl-2 text-blue-500 bg-gray-200 cursor-pointer hover:underline"
-                onClick={toggleReadMore}
-              >
-                Read More
-              </span>
-            )}
-          </div>
+          {/* Thu gọn: hiển thị plain text rút gọn + Read More ngay sau nội dung */}
+          {!isExpanded ? (
+            <p className="text-gray-800 mb-3 transition-all duration-200" style={{ wordBreak: "break-word" }}>
+              {makeExcerpt(displayContent, 200)}{" "}
+              {(countMarkdownLines(displayContent) > 3 || (displayContent && displayContent.length > 200)) && (
+                <button
+                  onClick={toggleReadMore}
+                  className="text-blue-500 hover:underline whitespace-nowrap"
+                >
+                  Xem thêm
+                </button>
+              )}
+            </p>
+          ) : (
+            <div className="text-gray-800 mb-3 transition-all duration-200" style={{ wordBreak: "break-word" }}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                {displayContent}
+              </ReactMarkdown>
+            </div>
+          )}
 
           {/* images gallery */}
           {displayImages.length > 0 && <PostImagesGallery images={displayImages} />}
@@ -436,7 +458,7 @@ const ContentPost: React.FC<ContentProps> = ({
             </Button>
           )}
 
-          <div className="flex items-center my-3 text-sm text-gray-500 border-t border-b border-gray-300 gap-15 ">
+          <div className="flex items-center my-3 text-sm text-gray-500 gap-15 ">
             <Button
               className={`flex items-center gap-1 cursor-pointer focus:outline-none transition bg-transparent hover:bg-gray-50 px-4 py-3 rounded ${
                 liked ? "text-red-500 hover:text-red-600" : "text-gray-600 hover:text-gray-800"
