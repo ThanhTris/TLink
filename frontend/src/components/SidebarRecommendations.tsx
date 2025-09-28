@@ -40,7 +40,7 @@ const SidebarRecommendations: React.FC<SidebarRecommendationProps> = ({
 
   return (
     <aside
-      className="fixed top-[64px] right-0 h-[calc(100vh-64px)] w-70 bg-white border-r border-black/10 shadow-md px-2 py-4 overflow-y-auto sidebar-hide-scrollbar"
+      className="fixed top-[64px] right-0 h-[calc(100vh-64px)] w-70 bg-glass-bg border-r shadow-md px-2 py-4 overflow-y-auto sidebar-hide-scrollbar"
     >
       <div className="mb-3 font-bold text-2xl">Có thể bạn thích</div>
       {posts.length === 0 && (

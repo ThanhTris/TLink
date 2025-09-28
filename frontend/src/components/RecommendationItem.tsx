@@ -39,7 +39,7 @@ const RecommendationItem: React.FC<RecommendationItemProps> = ({
 
   return (
     <div
-      className="flex flex-col gap-1 p-3 border-b last:border-b-0 cursor-pointer hover:bg-gray-50"
+      className="group flex flex-col gap-1 p-3 border-t cursor-pointer hover-glass hover:shadow-sm transition recommendation-item"
       onClick={onClick}
     >
       <div className="font-semibold text-xl leading-snug mb-1">{title}</div>
@@ -49,7 +49,11 @@ const RecommendationItem: React.FC<RecommendationItemProps> = ({
           {tags.map((tag, idx) => (
             <span
               key={idx}
-              className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full"
+              className={`px-2 py-0.5 text-xs rounded-full ${
+                idx === 0
+                  ? "text-[var(--color-accent-green)] bg-[rgba(255,255,255,0.25)]"
+                  : "text-[var(--color-accent-orange)] bg-[rgba(255,255,255,0.25)]"
+              }`}
             >
               #{tag}
             </span>
