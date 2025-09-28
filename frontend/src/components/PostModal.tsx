@@ -208,14 +208,16 @@ const PostModal: React.FC<PostModalProps> = ({ postId, open, onClose }) => {
                 {displayParentTags.map((tag: string, idx: number) => (
                   <span
                     key={`parent-tag-${idx}`}
-                    className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded-full">
+                    className="px-2 py-1 text-xs text-[var(--color-accent-green)] bg-gray-50 rounded-full"
+                  >
                     #{tag}
                   </span>
                 ))}
                 {displayChildTags.map((tag: string, idx: number) => (
                   <span
                     key={`child-tag-${idx}`}
-                    className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded-full">
+                    className="px-2 py-1 text-xs text-[var(--color-accent-orange)] bg-gray-50 rounded-full"
+                  >
                     #{tag}
                   </span>
                 ))}
@@ -241,7 +243,7 @@ const PostModal: React.FC<PostModalProps> = ({ postId, open, onClose }) => {
                 <PostFilesList files={displayFiles} />
               )}
               {/* Like & comment info (ngay trước phần bình luận) */}
-              <div className="flex items-center justify-around gap-6 py-4 my-3 text-sm text-gray-500 border-t border-b border-gray-300">
+              <div className="flex items-center justify-around gap-6 py-4 my-3 text-sm text-gray-500 ">
                 <Button
                   className={`flex items-center gap-1 cursor-pointer focus:outline-none ${
                     isLiked ? "text-red-500 hover:text-red-600" : "text-gray-600 hover:text-gray-800"
