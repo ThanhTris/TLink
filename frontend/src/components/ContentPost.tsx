@@ -303,6 +303,11 @@ const ContentPost: React.FC<ContentProps> = ({
     return (plain.slice(0, maxChars).replace(/\s+\S*$/, "") + "...").trim();
   }
 
+  // Xác định có cần nút "Xem thêm" hay không
+  const shouldShowExpand = useMemo(() => {
+    return countMarkdownLines(displayContent) > 3 || (displayContent && displayContent.length > 200);
+  }, [displayContent]);
+
   return (
     <div className="relative w-full px-5 pt-5 pb-2 mt-6 bg-[var(--bg-card)] shadow-[var(--shadow-card)] border border-[rgba(255,255,255,0.45)] rounded-xl">
       <div className="flex items-center justify-between mb-1">
@@ -425,21 +430,29 @@ const ContentPost: React.FC<ContentProps> = ({
         <div className="mb-3 text-sm italic text-gray-600">Bài viết đã bị ẩn.</div>
       ) : (
         <>
-          {/* Thu gọn: hiển thị plain text rút gọn + Read More ngay sau nội dung */}
+          {/* Thu gọn: hiển thị plain text rút gọn + "Xem thêm" inline; Mở rộng: render markdown đầy đủ */}
           {!isExpanded ? (
-            <p className="text-gray-800 mb-3 transition-all duration-200" style={{ wordBreak: "break-word" }}>
-              {makeExcerpt(displayContent, 200)}{" "}
-              {(countMarkdownLines(displayContent) > 3 || (displayContent && displayContent.length > 200)) && (
-                <button
-                  onClick={toggleReadMore}
-                  className="text-blue-500 hover:underline whitespace-nowrap"
-                >
-                  Xem thêm
-                </button>
-              )}
-            </p>
+            <>
+              <p
+                className="text-gray-800 mb-3 transition-all duration-200"
+                style={{ wordBreak: "break-word" }}
+              >
+                {makeExcerpt(displayContent, 200)}{" "}
+                {shouldShowExpand && (
+                  <button
+                    onClick={toggleReadMore}
+                    className="text-blue-500 hover:underline whitespace-nowrap"
+                  >
+                    Xem thêm
+                  </button>
+                )}
+              </p>
+            </>
           ) : (
-            <div className="text-gray-800 mb-3 transition-all duration-200" style={{ wordBreak: "break-word" }}>
+            <div
+              className="text-gray-800 mb-3 transition-all duration-200"
+              style={{ wordBreak: "break-word" }}
+            >
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                 {displayContent}
               </ReactMarkdown>
@@ -480,7 +493,7 @@ const ContentPost: React.FC<ContentProps> = ({
           {showComments && (
             <CommentSection
               initialComments={comments}
-              onAddComment={() => {}} // hoặc truyền hàm reload nếu muốn
+              onAddComment={() => {}}
               currentUser="You"
               post_id={id}
             />
