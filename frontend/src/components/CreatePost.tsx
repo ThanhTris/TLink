@@ -19,6 +19,7 @@ import {
   Paperclip,
   Smile,
   X,
+  Trash2, // thêm
 } from "lucide-react";
 import { createPost, uploadPostImage, uploadPostFile, updatePost as apiUpdatePost } from "../api/post";
 
@@ -117,6 +118,10 @@ const CreatePost: React.FC<CreatePostProps> = ({
   const [imageOrigins, setImageOrigins] = useState<("existing" | "new")[]>(
     (initialImageUrls || []).map(() => "existing")
   );
+  // NEW: tên hiển thị cho ảnh (song song với imagePreviews)
+  const [imageNames, setImageNames] = useState<string[]>(
+    (initialImageUrls || []).map((_: any, idx: number) => `Ảnh ${idx + 1}`)
+  );
 
   // tài liệu: tách tài liệu tồn tại vs tài liệu mới
   const [docFiles, setDocFiles] = useState<File[]>([]);
@@ -200,6 +205,11 @@ const CreatePost: React.FC<CreatePostProps> = ({
         setImagePreviews((prev) => [...prev, url]);
         setImageOrigins((prev) => [...prev, "new"]);
       });
+      // NEW: lưu tên ảnh để hiển thị dạng list
+      setImageNames((prev) => [
+        ...prev,
+        ...imgs.map((f, i) => f.name || `Ảnh mới ${prev.length + i + 1}`)
+      ]);
     }
     if (docs.length) setDocFiles((prev) => [...prev, ...docs]);
   };
@@ -216,6 +226,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
     }
     setImagePreviews((prev) => prev.filter((_, idx) => idx !== i));
     setImageOrigins((prev) => prev.filter((_, idx) => idx !== i));
+    // NEW: đồng bộ xóa tên ảnh
+    setImageNames((prev) => prev.filter((_, idx) => idx !== i));
   };
   const removeDocFileByIndex = (i: number) => {
     setDocFiles((prev) => prev.filter((_, idx) => idx !== i));
@@ -664,26 +676,20 @@ const CreatePost: React.FC<CreatePostProps> = ({
               onBlur={() => setIsContentFocused(false)}
             />
           </div>
-          {/* ảnh xem trước: gồm cả ảnh tồn tại và mới */}
+          {/* ảnh hiển thị dạng list giống file, dùng icon ảnh */}
           {imagePreviews.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 mb-3 sm:grid-cols-4">
-              {imagePreviews.map((src, i) => (
-                <div key={i} className="relative">
-                  <img
-                    src={src}
-                    alt={`preview-${i}`}
-                    className="object-cover w-full border rounded h-28"
-                  />
+            <div className="mb-3">
+              {imagePreviews.map((_, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm">
+                  <ImageIcon size={16} />
+                  <span className="truncate">{imageNames[i] || `Ảnh ${i + 1}`}</span>
                   <Button
                     onClick={() => removeImageByIndex(i)}
-                    className="absolute w-6 h-6 text-xs text-red-600 bg-white border rounded-full -top-2 -right-2"
+                    className="text-gray-500 hover:text-red-600"
                     title="Xóa"
                   >
-                    <X size={14} />
+                    <X size={16} />
                   </Button>
-                  <div className="absolute left-1 bottom-1 text-[10px] bg-white/80 px-1 rounded">
-                    {imageOrigins[i] === "existing" ? "Tồn tại" : "Mới"}
-                  </div>
                 </div>
               ))}
             </div>
@@ -694,16 +700,16 @@ const CreatePost: React.FC<CreatePostProps> = ({
             <div className="mb-2">
               {existingDocUrls.map((f, i) => (
                 <div key={`exist-${i}`} className="flex items-center gap-2 text-sm">
-                  <Paperclip size={14} />
+                  <Paperclip size={16} />
                   <a href={f.url} target="_blank" rel="noreferrer" className="text-blue-600 truncate hover:underline">
                     {f.name || f.url}
                   </a>
                   <Button
                     onClick={() => removeExistingDocByIndex(i)}
-                    className="text-gray-500 hover:text-gray-700"
+                    className="text-gray-500 hover:text-red-600"
                     title="Xóa"
                   >
-                    <X size={14} />
+                    <X size={16} />
                   </Button>
                 </div>
               ))}
@@ -714,14 +720,14 @@ const CreatePost: React.FC<CreatePostProps> = ({
             <div className="mb-3">
               {docFiles.map((f, i) => (
                 <div key={i} className="flex items-center gap-2 text-sm">
-                  <Paperclip size={14} />
+                  <Paperclip size={16} />
                   <span className="truncate">{f.name}</span>
                   <Button
                     onClick={() => removeDocFileByIndex(i)}
-                    className="text-gray-500 hover:text-gray-700"
+                    className="text-gray-500 hover:text-red-600"
                     title="Xóa"
                   >
-                    <X size={14} />
+                    <X size={16} />
                   </Button>
                 </div>
               ))}
@@ -747,6 +753,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
             </Button>
           </div>
         </div>
+
         {/* Right: Preview */}
         <div
           ref={previewRef}
@@ -758,6 +765,76 @@ const CreatePost: React.FC<CreatePostProps> = ({
           >
             {content}
           </ReactMarkdown>
+
+          {/* Ảnh đính kèm (preview bên phải) */}
+          {imagePreviews.length > 0 && (
+            <div className="mt-4">
+              <h4 className="mb-2 text-sm font-medium text-gray-600">Ảnh đính kèm</h4>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {imagePreviews.map((src, i) => (
+                  <div key={`pv-img-${i}`} className="relative border rounded overflow-hidden group">
+                    <img src={src} alt={`preview-${i}`} className="object-cover w-full" />
+                    <Button
+                      onClick={() => removeImageByIndex(i)}
+                      title="Xóa ảnh"
+                      aria-label="Xóa ảnh"
+                      className="absolute bottom-2 right-2 grid place-items-center w-8 h-8 rounded-full bg-white/90 backdrop-blur shadow-md ring-1 ring-black/10 text-gray-700 hover:text-red-600 hover:shadow-lg transition-opacity transition-transform duration-150 ease-out opacity-0 group-hover:opacity-100 hover:scale-105"
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tệp đính kèm (preview bên phải) */}
+          {(existingDocUrls.length > 0 || docFiles.length > 0) && (
+            <div className="mt-4">
+              <h4 className="mb-2 text-sm font-medium text-gray-600">Tệp đính kèm</h4>
+              <div className="space-y-2">
+                {existingDocUrls.map((f, i) => (
+                  <div key={`pv-file-exist-${i}`} className="flex items-center justify-between gap-2 text-sm">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Paperclip size={16} />
+                      <a
+                        href={f.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="truncate text-blue-600 hover:underline"
+                        title={f.name || f.url}
+                      >
+                        {f.name || f.url}
+                      </a>
+                    </div>
+                    <Button
+                      onClick={() => removeExistingDocByIndex(i)}
+                      className="p-1 text-gray-600 hover:text-red-600 rounded shrink-0"
+                    >
+                      <Trash2 size={16} /> 
+                    </Button>
+                  </div>
+                ))}
+                {docFiles.map((f, i) => (
+                  <div key={`pv-file-new-${i}`} className="flex items-center justify-between gap-2 text-sm">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Paperclip size={16} />
+                      <span className="truncate" title={f.name}>
+                        {f.name}
+                      </span>
+                    <Button
+                      onClick={() => removeDocFileByIndex(i)}
+                      className="p-1 text-gray-600 hover:text-red-600 rounded shrink-0"
+                      title="Xóa"
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
