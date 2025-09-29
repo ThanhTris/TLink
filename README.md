@@ -1,29 +1,29 @@
 
 
-# IT-Forum
+# TLink-Forum
 
 ## Introduction
-IT-Forum is a web platform for the IT community to share knowledge, ask questions, discuss, and connect. The project includes a modern React frontend and a secure Spring Boot backend, supporting authentication, posting, commenting, tagging, searching, recommendations, profile management, authorization, file upload, and more.
+TLink-Forum is a web platform for the IT community to share knowledge, ask questions, discuss, and connect. The project includes a modern React frontend and a secure Spring Boot backend, supporting authentication, posting, commenting, tagging, searching, recommendations, profile management, authorization, file upload, and more.
 
 
 ## Main Features
-- Register and login (email/phone, password, OTP verification, Google OAuth)
+- Register & log in (email/phone, password, OTP, Google OAuth)
 - Create, edit, delete, save, and view posts
-- Comment, reply, edit, delete, hide/unhide comments (support mention @user)
-- Like/Unlike posts and comments
-- Tag system (parent/child tags), category classification, sidebar recommendations
-- Search and filter posts by tag, category, or keyword
-- Post recommendations based on user behavior
+- Comments with threaded replies, edit/delete, hide/unhide, and @mentions
+- Like/unlike for posts and comments
+- Parent/child tags, categories, and sidebar recommendations
+- Search and filter by keyword, tag, or category
+- Personalized post recommendations
+- AI chatbot assistant to fetch, create, edit, and delete posts (guided steps)
 - Profile management (avatar, info, password change)
-- Upload images and files for posts
-- Responsive, modern UI with dark mode support
-- Role-based access, security, JWT authentication, access control
-- Manage saved, liked, and posted articles
-- Statistics for posts, comments, likes
-- Error notification, validation, realtime status feedback
+- Upload images and files with posts
+- Modern Glassmorphism UI
+- Manage saved, liked, and authored posts
+- Basic statistics for posts, comments, and likes
+- Validation, error handling, and real-time toast notifications
 
 ## Demo Video (Japanese language)
-- [Watch the main feature demo video on Google Drive](https://drive.google.com/file/d/13QLU73dKbLTlEl1_BrQhl83KO1rfBK0k/view?usp=drive_link)
+- [Watch the main feature demo video on Google Drive](https://drive.google.com/file/d/1NdzDSpSY2IgWnX_MehKWYIltPGDIFSMd/view?usp=sharing)
 
 ## Prerequisites
 - Node.js (>= 18.x)
