@@ -191,8 +191,8 @@ const Home: React.FC = () => {
     <div className="px-16 py-8">
       <ContentHeader title="Mới nhất" onCreate={() => setShowCreate(true)} />
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
-          <div className="w-full">
+        <div className="fixed inset-0 z-50 bg-black/20">
+          <div className="min-h-screen flex items-center justify-center p-4 overflow-y-auto">
             <CreatePost
               onCancel={() => setShowCreate(false)}
               onSubmit={handleCreatePostSuccess}

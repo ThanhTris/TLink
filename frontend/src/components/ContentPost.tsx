@@ -503,35 +503,30 @@ const ContentPost: React.FC<ContentProps> = ({
 
       {/* Form chỉnh sửa (modal overlay) */}
       {isEditing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
-          <div className="w-full max-w-3xl">
-            <div
-              className="relative bg-white rounded-xl shadow-xl max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Button
-                onClick={() => setIsEditing(false)}
-                className="absolute p-2 text-gray-600 rounded-full top-3 right-3 hover:bg-gray-100"
-                title="Đóng"
-                aria-label="Đóng"
-              >
-                <X size={18} />
-              </Button>
-              <CreatePost
-                mode="edit"
-                postId={id}
-                heading="Chỉnh sửa bài viết"
-                submitLabel="Cập nhật"
-                initialTitle={displayTitle}
-                initialContent={displayContent}
-                initialTagParent={displayParentTags[0] || "Thảo luận chung"}
-                initialChildTags={displayChildTags}
-                initialImageUrls={displayImages.map(img => img.url)}
-                initialDocUrls={displayFiles}
-                onCancel={() => setIsEditing(false)}
-                onSubmit={handleUpdate}
-              />
-            </div>
+        <div className="fixed inset-0 z-50 bg-black/20">
+          <Button
+            onClick={() => setIsEditing(false)}
+            className="fixed top-3 right-3 p-2 text-gray-600 rounded-full hover:bg-gray-100"
+            title="Đóng"
+            aria-label="Đóng"
+          >
+            <X size={18} />
+          </Button>
+          <div className="min-h-screen flex items-center justify-center p-4 overflow-y-auto">
+            <CreatePost
+              mode="edit"
+              postId={id}
+              heading="Chỉnh sửa bài viết"
+              submitLabel="Cập nhật"
+              initialTitle={displayTitle}
+              initialContent={displayContent}
+              initialTagParent={displayParentTags[0] || "Thảo luận chung"}
+              initialChildTags={displayChildTags}
+              initialImageUrls={displayImages.map(img => img.url)}
+              initialDocUrls={displayFiles}
+              onCancel={() => setIsEditing(false)}
+              onSubmit={handleUpdate}
+            />
           </div>
         </div>
       )}
