@@ -8,6 +8,7 @@ interface ToastProps {
   type?: "success" | "error" | "warning";
   statusCode?: number;
   onClose: () => void;
+  inline?: boolean; // NEW: render without fixed positioning to allow stacking
 }
 
 const getTypeFromStatus = (statusCode?: number): "success" | "error" | "warning" => {
@@ -54,6 +55,7 @@ const Toast: React.FC<ToastProps> = ({
   type,
   statusCode,
   onClose,
+  inline, // NEW
 }) => {
   const toastType = type || getTypeFromStatus(statusCode);
   const [show, setShow] = useState(false);
@@ -73,7 +75,7 @@ const Toast: React.FC<ToastProps> = ({
 
   return (
     <div
-      className={`fixed top-6 right-6 z-50 min-w-[320px] max-w-xs px-5 py-4 flex flex-row items-start gap-3 rounded-lg shadow-lg
+      className={`${inline ? "" : "fixed top-6 right-6 z-50"} min-w-[320px] max-w-xs px-5 py-4 flex flex-row items-start gap-3 rounded-lg shadow-lg
         ${bgMap[toastType]} ${borderMap[toastType]}
         transition-all duration-500 ease-in-out
         ${show ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"}
@@ -106,7 +108,7 @@ const Toast: React.FC<ToastProps> = ({
             <XCircle className="w-5 h-5" />
           </Button>
         </div>
-        <span className={`mt-1 text-base font-normal ${textColorMap[toastType]}`}>
+        <span className={`mt-1 text-base font-normal ${textColorMap[toastType]} whitespace-pre-line`}>
           {message}
         </span>
       </div>
