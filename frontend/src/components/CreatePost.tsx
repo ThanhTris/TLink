@@ -8,6 +8,7 @@ import remarkGfm from "remark-gfm";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 // Thêm Twemoji
 import twemoji from "twemoji";
+import Toast from "./Toast";
 
 import {
   Bold,
@@ -192,15 +193,88 @@ const CreatePost: React.FC<CreatePostProps> = ({
     }, 0);
   };
 
+  // Validation config (aligned with backend)
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const allowedImageTypes = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/bmp",
+    "image/webp",
+  ]);
+  const allowedDocTypes = new Set([
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "text/plain",
+    "application/zip",
+    "application/x-rar-compressed",
+    // Note: backend also allows images on file endpoint, but UI routes images via image endpoint
+    "image/png",
+    "image/jpeg",
+    "image/jpg",
+  ]);
+  const formatMB = (bytes: number) => (bytes / (1024 * 1024)).toFixed(2);
+
+  // Local toast stack
+  type LocalToast = {
+    id: number;
+    message: string;
+    title?: string;
+    type?: "success" | "error" | "warning";
+    statusCode?: number;
+  };
+  const [toasts, setToasts] = useState<LocalToast[]>([]);
+  const pushToast = (t: Omit<LocalToast, "id">) =>
+    setToasts((prev) => [...prev, { id: Date.now() + Math.random(), ...t }]);
+
   // file helpers
   const imgInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const addFiles = (files: File[]) => {
-    const imgs = files.filter((f) => f.type.startsWith("image/"));
-    const docs = files.filter((f) => !f.type.startsWith("image/"));
-    if (imgs.length) {
-      setImageFiles((prev) => [...prev, ...imgs]);
-      imgs.forEach((f) => {
+    const validImages: File[] = [];
+    const validDocs: File[] = [];
+    const rejects: { name: string; size: number; reason: string }[] = [];
+
+    files.forEach((f) => {
+      const isImage = f.type?.startsWith("image/");
+      if (f.size > MAX_FILE_SIZE) {
+        rejects.push({ name: f.name, size: f.size, reason: "Kích thước vượt quá 5MB" });
+        return;
+      }
+      if (isImage) {
+        if (!allowedImageTypes.has(f.type)) {
+          rejects.push({ name: f.name, size: f.size, reason: "Định dạng ảnh không hợp lệ" });
+          return;
+        }
+        validImages.push(f);
+      } else {
+        if (!allowedDocTypes.has(f.type)) {
+          rejects.push({ name: f.name, size: f.size, reason: "Định dạng tệp không hợp lệ" });
+          return;
+        }
+        validDocs.push(f);
+      }
+    });
+
+    // Show one toast per invalid file
+    if (rejects.length) {
+      rejects.forEach((r) => {
+        pushToast({
+          title: "Tệp không hợp lệ",
+          type: "error",
+          message: `${r.name} (${formatMB(r.size)} MB) — ${r.reason}`,
+        });
+      });
+    }
+
+    if (validImages.length) {
+      setImageFiles((prev) => [...prev, ...validImages]);
+      validImages.forEach((f) => {
         const url = URL.createObjectURL(f);
         setImagePreviews((prev) => [...prev, url]);
         setImageOrigins((prev) => [...prev, "new"]);
@@ -208,10 +282,10 @@ const CreatePost: React.FC<CreatePostProps> = ({
       // NEW: lưu tên ảnh để hiển thị dạng list
       setImageNames((prev) => [
         ...prev,
-        ...imgs.map((f, i) => f.name || `Ảnh mới ${prev.length + i + 1}`)
+        ...validImages.map((f, i) => f.name || `Ảnh mới ${prev.length + i + 1}`)
       ]);
     }
-    if (docs.length) setDocFiles((prev) => [...prev, ...docs]);
+    if (validDocs.length) setDocFiles((prev) => [...prev, ...validDocs]);
   };
   const removeImageByIndex = (i: number) => {
     const url = imagePreviews[i];
@@ -469,9 +543,101 @@ const CreatePost: React.FC<CreatePostProps> = ({
   // State to track if the content textarea is focused
   const [isContentFocused, setIsContentFocused] = useState(false);
 
+  // React-Select glass styles (shared)
+  const commonSelectStyles = {
+    control: (base: any, state: any) => ({
+      ...base,
+      minHeight: 42,
+      borderRadius: 12,
+      backgroundColor: "var(--glass-bg-soft)",
+      backdropFilter: "blur(var(--glass-blur-soft))",
+      borderColor: state.isFocused ? "var(--color-primary)" : "var(--glass-border)",
+      boxShadow: state.isFocused ? "0 0 0 3px rgba(var(--primary-rgb),.18)" : "none",
+      transition: "border-color .15s ease, box-shadow .15s ease",
+      ":hover": { borderColor: "var(--color-primary)" },
+    }),
+    valueContainer: (base: any) => ({
+      ...base,
+      paddingBlock: 6,
+      paddingInline: 10,
+    }),
+    placeholder: (base: any) => ({
+      ...base,
+      color: "var(--text-sub)",
+    }),
+    singleValue: (base: any) => ({
+      ...base,
+      color: "var(--text-main)",
+    }),
+    input: (base: any) => ({
+      ...base,
+      color: "var(--text-main)",
+    }),
+    indicatorsContainer: (base: any) => ({
+      ...base,
+      color: "var(--text-sub)",
+    }),
+    indicatorSeparator: () => ({ display: "none" }),
+    dropdownIndicator: (base: any, state: any) => ({
+      ...base,
+      color: state.isFocused ? "var(--color-primary)" : "var(--text-sub)",
+      ":hover": { color: "var(--color-primary)" },
+    }),
+    clearIndicator: (base: any) => ({
+      ...base,
+      color: "var(--text-sub)",
+      ":hover": { color: "var(--color-danger)" },
+    }),
+    menu: (base: any) => ({
+      ...base,
+      borderRadius: 12,
+      backgroundColor: "var(--menu-bg)",
+      border: "1px solid var(--menu-border)",
+      boxShadow: "var(--menu-shadow)",
+      overflow: "hidden",
+      backdropFilter: "blur(12px)",
+    }),
+    menuList: (base: any) => ({
+      ...base,
+      maxHeight: 260,
+      paddingBlock: 6,
+    }),
+    option: (base: any, state: any) => ({
+      ...base,
+      cursor: "pointer",
+      color: state.isSelected ? "var(--color-primary)" : "var(--text-main)",
+      backgroundColor: state.isSelected
+        ? "rgba(var(--primary-rgb),.12)"
+        : state.isFocused
+        ? "rgba(255,255,255,.6)"
+        : "transparent",
+    }),
+    multiValue: (base: any) => ({
+      ...base,
+      backgroundColor: "rgba(var(--primary-rgb),.10)",
+      borderRadius: 9999,
+      overflow: "hidden",
+    }),
+    multiValueLabel: (base: any) => ({
+      ...base,
+      color: "var(--text-main)",
+      paddingInline: 8,
+    }),
+    multiValueRemove: (base: any) => ({
+      ...base,
+      color: "var(--color-primary)",
+      ":hover": {
+        backgroundColor: "rgba(var(--primary-rgb),.15)",
+        color: "var(--color-danger)",
+      },
+    }),
+  };
+
   return (
-    <div className="w-full max-w-6xl p-6 mx-auto bg-gray-50 rounded-xl">
-      <h3 className="mb-6 text-xl font-semibold">{headingText}</h3>
+    <div className="w-full max-w-6xl p-6 mx-auto glass-card">
+      <h3 className="mb-6 text-xl font-semibold text-[var(--text-title)] glass-surface px-4 py-2">
+        {headingText}
+      </h3>
       <div className="flex flex-col gap-6 md:flex-row">
         {/* Left: Form nhập bài viết */}
         <div className="flex flex-col w-1/2">
@@ -497,21 +663,11 @@ const CreatePost: React.FC<CreatePostProps> = ({
                   onChange={(opt) => {
                     const nxt = opt?.value || "Thảo luận chung";
                     setTagParent(nxt);
-                    // reset all child tags when parent changes
                     setChildTags([]);
                   }}
                   menuPlacement="auto"
-                  styles={{
-                    menu: (base) => ({
-                      ...base,
-                      maxHeight: 200,
-                      overflowY: "auto",
-                    }),
-                    menuList: (base) => ({ ...base, maxHeight: 200 }),
-                    option: (base) => ({ ...base, cursor: "pointer" }),
-                    clearIndicator: (base) => ({ ...base, cursor: "pointer" }),
-                    dropdownIndicator: (base) => ({ ...base, cursor: "pointer" }),
-                  }}
+                  classNamePrefix="tag"
+                  styles={commonSelectStyles as any}
                 />
               </div>
               <div className="w-3/5 min-w-0">
@@ -521,55 +677,30 @@ const CreatePost: React.FC<CreatePostProps> = ({
                   value={childTags.map((t) => ({ value: t, label: t }))}
                   onChange={(opts) => {
                     const arr = Array.isArray(opts) ? opts : [];
-                    setChildTags(
-                      arr.map((o: any) => String(o.value)).filter(Boolean)
-                    );
+                    setChildTags(arr.map((o: any) => String(o.value)).filter(Boolean));
                   }}
                   onCreateOption={(val) => {
                     const v = val.trim();
                     if (!v) return;
-                    setChildTags((prev) =>
-                      prev.includes(v) ? prev : [...prev, v]
-                    );
+                    setChildTags((prev) => (prev.includes(v) ? prev : [...prev, v]));
                   }}
                   isClearable
                   placeholder="Chọn hoặc nhập thẻ con"
                   menuPlacement="auto"
-                  styles={{
-                    menu: (base) => ({
-                      ...base,
-                      maxHeight: 200,
-                      overflowY: "auto",
-                    }),
-                    menuList: (base) => ({ ...base, maxHeight: 200 }),
-                    option: (base) => ({ ...base, cursor: "pointer" }),
-                    multiValueRemove: (base) => ({
-                      ...base,
-                      cursor: "pointer",
-                    }),
-                    clearIndicator: (base) => ({ ...base, cursor: "pointer" }),
-                    dropdownIndicator: (base) => ({ ...base, cursor: "pointer" }),
-                  }}
+                  classNamePrefix="tag"
+                  styles={commonSelectStyles as any}
                 />
               </div>
             </div>
           </div>
           <div
-            className={`mb-3 border rounded-md transition-colors ${
-              isContentFocused
-                ? "border-blue-500"
-                : "border-black "
+            className={`mb-3 rounded-xl glass-surface transition-colors border border-[var(--glass-border)] ${
+              isContentFocused ? "ring-2 ring-[var(--color-primary)]" : ""
             }`}
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
           >
-            <div
-              className={`flex items-center gap-2 px-2 py-2 border-b transition-colors ${
-                isContentFocused
-                  ? "border-blue-500"
-                  : "border-black"
-              }`}
-            >
+            <div className="flex items-center gap-2 px-2 py-2 border-b border-[var(--glass-border)]">
               <Button
                 onClick={() => surroundSelection("**")}
                 className="px-2"
@@ -631,6 +762,8 @@ const CreatePost: React.FC<CreatePostProps> = ({
                 ref={docInputRef}
                 type="file"
                 multiple
+                // Restrict to most common extensions supported by backend
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
                 className="hidden"
                 onChange={(e) => addFiles(Array.from(e.target.files || []))}
               />
@@ -676,46 +809,27 @@ const CreatePost: React.FC<CreatePostProps> = ({
               onBlur={() => setIsContentFocused(false)}
             />
           </div>
-          {/* ảnh hiển thị dạng list giống file, dùng icon ảnh */}
-          {imagePreviews.length > 0 && (
-            <div className="mb-3">
-              {imagePreviews.map((_, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm">
-                  <ImageIcon size={16} />
-                  <span className="truncate">{imageNames[i] || `Ảnh ${i + 1}`}</span>
-                  <Button
-                    onClick={() => removeImageByIndex(i)}
-                    className="text-gray-500 hover:text-red-600"
-                    title="Xóa"
-                  >
-                    <X size={16} />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* tài liệu: hiển thị tài liệu tồn tại và mới */}
+          {/* tài liệu tồn tại (giữ bề mặt sáng hơn để dễ đọc) */}
           {existingDocUrls.length > 0 && (
-            <div className="mb-2">
+            <div className="mb-2 glass-surface p-2">
               {existingDocUrls.map((f, i) => (
                 <div key={`exist-${i}`} className="flex items-center gap-2 text-sm">
                   <Paperclip size={16} />
-                  <a href={f.url} target="_blank" rel="noreferrer" className="text-blue-600 truncate hover:underline">
+                  <a
+                    href={f.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="truncate text-[var(--color-primary)] hover:underline"
+                  >
                     {f.name || f.url}
                   </a>
-                  <Button
-                    onClick={() => removeExistingDocByIndex(i)}
-                    className="text-gray-500 hover:text-red-600"
-                    title="Xóa"
-                  >
+                  <Button onClick={() => removeExistingDocByIndex(i)} className="text-gray-500 hover:text-[var(--color-danger)]" title="Xóa">
                     <X size={16} />
                   </Button>
                 </div>
               ))}
             </div>
           )}
-
           {docFiles.length > 0 && (
             <div className="mb-3">
               {docFiles.map((f, i) => (
@@ -724,7 +838,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                   <span className="truncate">{f.name}</span>
                   <Button
                     onClick={() => removeDocFileByIndex(i)}
-                    className="text-gray-500 hover:text-red-600"
+                    className="text-gray-500 hover:text-[var(--color-danger)]"
                     title="Xóa"
                   >
                     <X size={16} />
@@ -733,36 +847,29 @@ const CreatePost: React.FC<CreatePostProps> = ({
               ))}
             </div>
           )}
-
-          <div className="flex justify-end gap-3 mt-8">
+          <div className="flex justify-end gap-5 mt-8">
             <Button
-              className="px-6 py-2 text-black transition bg-gray-200 rounded-full hover:bg-gray-300"
-              onClick={onCancel}
-            >
-              Hủy
-            </Button>
-            <Button
-              className={`bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-600 transition ${
-                !canSubmit ? "opacity-60" : ""
-              }`}
+              className={`btn-safe ${!canSubmit ? "opacity-60" : ""}`}
               onClick={handleSubmit}
               disabled={!canSubmit}
               title={!canSubmit ? "Nhập tiêu đề và nội dung trước khi đăng" : undefined}
             >
               {submitText}
             </Button>
+            <Button
+              className="btn-danger"
+              onClick={onCancel}
+            >
+              Hủy
+            </Button>
           </div>
         </div>
-
         {/* Right: Preview */}
         <div
           ref={previewRef}
-          className="flex flex-col self-start w-1/2 h-full p-4 overflow-y-auto max-h-92"
+          className="flex flex-col self-start w-1/2 h-full max-h-128 p-4 overflow-y-auto glass-surface"
         >
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={markdownComponents}
-          >
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
             {content}
           </ReactMarkdown>
 
@@ -778,7 +885,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                       onClick={() => removeImageByIndex(i)}
                       title="Xóa ảnh"
                       aria-label="Xóa ảnh"
-                      className="absolute bottom-2 right-2 grid place-items-center w-8 h-8 rounded-full bg-white/90 backdrop-blur shadow-md ring-1 ring-black/10 text-gray-700 hover:text-red-600 hover:shadow-lg transition-opacity transition-transform duration-150 ease-out opacity-0 group-hover:opacity-100 hover:scale-105"
+                      className="absolute bottom-2 right-2 grid place-items-center w-8 h-8 rounded-full bg-white/90 backdrop-blur shadow-md ring-1 ring-black/10 text-gray-700 hover:text-[var(--text-danger)] hover:shadow-lg transition-opacity transition-transform duration-150 ease-out opacity-0 group-hover:opacity-100 hover:scale-105"
                     >
                       <Trash2 size={16} />
                     </Button>
@@ -791,7 +898,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
           {/* Tệp đính kèm (preview bên phải) */}
           {(existingDocUrls.length > 0 || docFiles.length > 0) && (
             <div className="mt-4">
-              <h4 className="mb-2 text-sm font-medium text-gray-600">Tệp đính kèm</h4>
+              <h4 className="mb-2 text-sm font-medium text-[var(--text-sub)]">Tệp đính kèm</h4>
               <div className="space-y-2">
                 {existingDocUrls.map((f, i) => (
                   <div key={`pv-file-exist-${i}`} className="flex items-center justify-between gap-2 text-sm">
@@ -801,17 +908,14 @@ const CreatePost: React.FC<CreatePostProps> = ({
                         href={f.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="truncate text-blue-600 hover:underline"
+                        className="truncate text-[var(--color-primary)] hover:underline"
                         title={f.name || f.url}
                       >
                         {f.name || f.url}
                       </a>
                     </div>
-                    <Button
-                      onClick={() => removeExistingDocByIndex(i)}
-                      className="p-1 text-gray-600 hover:text-red-600 rounded shrink-0"
-                    >
-                      <Trash2 size={16} /> 
+                    <Button onClick={() => removeExistingDocByIndex(i)} className="p-1 text-gray-600 hover:text-[var(--color-danger)] rounded shrink-0">
+                      <Trash2 size={16} />
                     </Button>
                   </div>
                 ))}
@@ -824,7 +928,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                       </span>
                     <Button
                       onClick={() => removeDocFileByIndex(i)}
-                      className="p-1 text-gray-600 hover:text-red-600 rounded shrink-0"
+                      className="p-1 text-gray-600 hover:text-[var(--color-danger)] rounded shrink-0"
                       title="Xóa"
                     >
                       <Trash2 size={16} />
@@ -837,6 +941,25 @@ const CreatePost: React.FC<CreatePostProps> = ({
           )}
         </div>
       </div>
+
+      {/* Toast stack (top-right) */}
+      {toasts.length > 0 && (
+        <div className="fixed top-6 right-6 z-50 flex flex-col gap-3 items-end">
+          {toasts.map((t) => (
+            <Toast
+              key={t.id}
+              inline
+              message={t.message}
+              title={t.title}
+              type={t.type}
+              statusCode={t.statusCode}
+              onClose={() =>
+                setToasts((prev) => prev.filter((x) => x.id !== t.id))
+              }
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };
