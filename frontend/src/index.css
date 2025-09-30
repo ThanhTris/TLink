@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
+/* Keep only variables/tokens in :root for consistency */
 :root {
   /* 🎯 Màu chính (Primary Palette) */
-  --color-primary-blue: #3B82F6; /* RGB value for blue */
+  --color-primary: #3B82F6;   /* brand primary */
   --color-primary-purple: #8B5CF6; /* tím nhạt hiện đại */
   --color-primary-cyan: #06B6D4;   /* xanh ngọc mát */
 
@@ -18,9 +19,11 @@
   --glass-bg: rgba(255, 255, 255, 0.15);
   --glass-border: rgba(255, 255, 255, 0.3);
   --glass-blur: 20px;
+  --glass-blur-soft: 10px;
+  --glass-bg-strong: rgba(255, 255, 255, 0.6);
+  --glass-bg-soft: rgba(255, 255, 255, 0.3);
 
   /* ✨ Text */
-  --text-primary: rgba(59, 130, 246, 1); /* Ensure it's an RGBA value */
   --text-main: rgba(30, 41, 59, 0.9);   /* gần đen */
   --text-sub: rgba(30, 41, 59, 0.7);    /* xám nhạt */
   --text-inverse: rgba(255, 255, 255, 0.95);
@@ -46,24 +49,39 @@
   /* Shadow */
   --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.15); /* shadow cho card */
 
-  /* Update font stack to modern fonts */
-  font-family: "Inter", "Noto Sans JP", "Noto Sans", sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  width: 100%;
-  min-height: 100vh;
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+  /* Semantic color roles (unchanged) */
+  --color-success: #22C55E;   /* success/positive */
+  --color-warning: #F97316;   /* warning/attention */
+  --color-danger:  #EF4444;   /* danger/destructive */
 
+  /* RGB for glows/shadows (unchanged) */
+  --primary-rgb: 59, 130, 246;
+  --success-rgb: 34, 197, 94;
+  --warning-rgb: 249, 115, 22;
+  --danger-rgb: 239, 68, 68;
+
+  /* Back-compat aliases (prefer semantic tokens above) */
+  --color-primary-blue: var(--color-primary);
+  /* Removed duplicate alias overrides to avoid redefining existing tokens:
+     --color-accent-green, --color-accent-orange */
+  --text-primary: var(--color-primary);
+  --text-danger: var(--color-danger);
+
+  /* Keep color-scheme here */
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+}
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* Removed from :root for consistency:
+   font-family, line-height, font-weight, width, min-height, margin, padding,
+   box-sizing, color, background-color, font-synthesis, text-rendering,
+   -webkit-font-smoothing, -moz-osx-font-smoothing */
+
+/* Base/Reset: move structure and typography out of :root */
+html {
+  box-sizing: border-box;
+}
+*, *::before, *::after {
+  box-sizing: inherit;
 }
 
 a {
@@ -74,6 +92,7 @@ a:hover {
   color: var(--color-primary-blue);
 }
 
+/* Ensure typography and smoothing live on body */
 body {
   margin: 0;
   min-width: 320px;
@@ -81,7 +100,15 @@ body {
   background: var(--bg-body);
   background-attachment: fixed;
   background-size: cover;
-  font-family: inherit;
+
+  /* Moved from :root for consistency */
+  font-family: "Inter", "Noto Sans JP", "Noto Sans", sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1 {
@@ -97,6 +124,7 @@ h2 {
 
 @media (prefers-color-scheme: light) {
   :root {
+    /* keep these overrides minimal; tokens remain in :root */
     color: #213547;
     background-color: #ffffff;
   }
@@ -132,10 +160,11 @@ textarea {
   scrollbar-color: rgba(0, 0, 0, 0.3) transparent; /* Màu thanh kéo và nền */
 }
 
+/* Components: normalize borders to token */
 .post-card {
   background: var(--bg-card);
   backdrop-filter: blur(25px);
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  border: 1px solid var(--glass-border); /* normalized */
   box-shadow: var(--shadow-card);
 }
 
@@ -148,24 +177,20 @@ textarea {
 .sidebar {
   background: var(--bg-sidebar);
   backdrop-filter: blur(18px);
-  border-right: 1px solid rgba(255, 255, 255, 0.25);
+  border-right: 1px solid var(--glass-border); /* normalized */
 }
 
 .header {
   background: var(--bg-header);
   backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+  border-bottom: 1px solid var(--glass-border); /* normalized */
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* shadow nhẹ */
 }
 
+/* Glass utilities: unify and keep aliases */
+.glass,
+.glassmorphism,
 .bg-glass-bg {
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-}
-
-.glassmorphism {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--glass-border);
@@ -188,9 +213,11 @@ textarea {
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
+/* Extend hover effect to .glass parent as well */
+.glass:hover .avatar-glass,
 .glassmorphism:hover .avatar-glass {
-  border-color: rgba(255, 255, 255, 0.8); /* Brighter border on parent hover */
-  box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.3); /* Stronger shadow on parent hover */
+  border-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.3);
 }
 
 .user-menu {
@@ -206,4 +233,77 @@ textarea {
 
 .recommendation-item:hover + .recommendation-item {
   border-top-color: transparent;
+}
+
+/* Stronger glass for main cards (better contrast) */
+.glass-card {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--glass-blur-soft));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-card);
+  border-radius: 12px;
+}
+
+/* Lighter surfaces (toolbars, panes) */
+.glass-surface {
+  background: var(--glass-bg-soft);
+  backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.6));
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+}
+
+/* Glass buttons: Safe (primary), Warning (orange), Danger (red) */
+.btn-safe,
+.btn-warning,
+.btn-danger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  border: 1px solid var(--glass-border);
+  color: #fff;
+  backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.8));
+  transition: transform .15s ease, box-shadow .2s ease, filter .2s ease, opacity .2s ease;
+}
+
+/* Variant backgrounds + base elevation */
+.btn-safe { background: var(--color-primary); box-shadow: 0 6px 18px rgba(var(--primary-rgb), .35), 0 1px 0 rgba(255,255,255,.18) inset; }
+.btn-warning { background: var(--color-warning); box-shadow: 0 6px 18px rgba(var(--warning-rgb), .35), 0 1px 0 rgba(255,255,255,.18) inset; }
+.btn-danger { background: var(--color-danger); box-shadow: 0 6px 18px rgba(var(--danger-rgb), .35), 0 1px 0 rgba(255,255,255,.18) inset; }
+
+/* Hover/active interactions */
+.btn-safe:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(var(--primary-rgb), .42), 0 1px 0 rgba(255,255,255,.22) inset; filter: brightness(1.03); }
+.btn-warning:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(var(--warning-rgb), .42), 0 1px 0 rgba(255,255,255,.22) inset; filter: brightness(1.03); }
+.btn-danger:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(var(--danger-rgb), .42), 0 1px 0 rgba(255,255,255,.22) inset; filter: brightness(1.03); }
+
+.btn-safe:active,
+.btn-warning:active,
+.btn-danger:active {
+  transform: translateY(0);
+  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+}
+
+.btn-safe:disabled,
+.btn-warning:disabled,
+.btn-danger:disabled {
+  opacity: .6;
+  pointer-events: none;
+}
+
+/* react-select (classNamePrefix="tag") menu scrollbar to match tokens */
+.tag__menu-list {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+.tag__menu-list::-webkit-scrollbar {
+  width: 6px;
+}
+.tag__menu-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tag__menu-list::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
 }
