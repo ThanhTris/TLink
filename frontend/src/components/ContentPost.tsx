@@ -21,6 +21,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 // Thêm Twemoji
 import twemoji from "twemoji";
+import Toast from "./Toast";
 
 interface ContentProps {
   id: number;
@@ -41,6 +42,7 @@ interface ContentProps {
 
   // onDelete?: (id: number) => void;
   // onUpdate?: (id: number, data: any) => void;
+  onPostDeleted?: (postId: number) => void; // NEW: callback when post is deleted
 }
 
 const ContentPost: React.FC<ContentProps> = ({
@@ -59,6 +61,7 @@ const ContentPost: React.FC<ContentProps> = ({
   files = [],
   author_id,
   user_name,
+  onPostDeleted, // NEW prop
 }) => {
   const dispatch = useDispatch();
   const [liked, setLiked] = useState(is_liked); // boolean từ backend
@@ -74,6 +77,15 @@ const ContentPost: React.FC<ContentProps> = ({
   const [isHidden, setIsHidden] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
+  // NEW: confirm delete modal state
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  // NEW: success toast state
+  const [successToast, setSuccessToast] = useState<null | {
+    id: number;
+    message: string;
+    title?: string;
+    type?: "success" | "error" | "warning";
+  }>(null);
 
   // thêm: state hiển thị sau khi chỉnh sửa
   const [displayTitle, setDisplayTitle] = useState(title);
@@ -148,6 +160,7 @@ const ContentPost: React.FC<ContentProps> = ({
     // setComments((prev) => [...prev, newComment]);
   };
 
+  // Lock body scroll when editing only (not for confirm delete)
   useEffect(() => {
     if (!isEditing) return;
     const prev = document.body.style.overflow;
@@ -218,15 +231,51 @@ const ContentPost: React.FC<ContentProps> = ({
     return [];
   }, [files]);
 
-  // Xử lý xóa bài viết
+  // Xử lý xóa bài viết (không dùng window.confirm)
   const handleDelete = async () => {
     if (!id) return;
-    if (!window.confirm("Bạn có chắc muốn xóa bài viết này?")) return;
     try {
-      await apiDeletePost(id);
-      setIsDeleted(true);
+      const response = await apiDeletePost(id);
+      // Extract success status and message from backend response
+      const isSuccess = (response as any)?.data?.success;
+      const backendMessage = (response as any)?.data?.message || "Bài viết đã được xóa thành công";
+      
+      if (isSuccess) {
+        // Show success toast
+        setSuccessToast({
+          id: Date.now(),
+          title: "Thành công",
+          type: "success",
+          message: backendMessage,
+        });
+        
+        // Notify parent to remove this post from list FIRST
+        onPostDeleted?.(id);
+        
+        // Then set deleted state after a short delay to allow parent to handle removal
+        setTimeout(() => {
+          setIsDeleted(true);
+        }, 100); // Shorter delay to avoid seeing the post briefly
+      } else {
+        // Show error toast for unsuccessful deletion
+        setSuccessToast({
+          id: Date.now(),
+          title: "Thất bại",
+          type: "error",
+          message: backendMessage,
+        });
+      }
     } catch (err) {
-      alert("Xóa bài viết thất bại!");
+      // Extract error message from backend if available
+      const errorMessage = (err as any)?.response?.data?.message || "Xóa bài viết thất bại!";
+      setSuccessToast({
+        id: Date.now(),
+        title: "Thất bại",
+        type: "error",
+        message: errorMessage,
+      });
+    } finally {
+      setIsConfirmDeleteOpen(false);
     }
   };
 
@@ -395,7 +444,10 @@ const ContentPost: React.FC<ContentProps> = ({
                       Chỉnh sửa
                     </Button>
                     <Button
-                      onClick={handleDelete}
+                      onClick={() => {
+                        setIsConfirmDeleteOpen(true); // OPEN CONFIRM MODAL
+                        setMenuOpen(false);
+                      }}
                       className="block w-full px-4 py-2 text-left text-red-600 rounded-md hover:bg-gray-100"
                     >
                       Xóa
@@ -501,6 +553,35 @@ const ContentPost: React.FC<ContentProps> = ({
         </>
       )}
 
+      {/* Confirm Delete Modal - Centered with subtle backdrop */}
+      {isConfirmDeleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent">
+          <div className="user-menu w-full max-w-md mx-4 p-5 border border-[var(--glass-border)] rounded-xl shadow-lg">
+            <h4 className="text-lg font-semibold text-[var(--text-title)] mb-2">
+              Xóa bài viết?
+            </h4>
+            <p className="text-sm text-[var(--text-sub)] mb-4">
+              Hành động này không thể hoàn tác. Bạn có chắc chắn muốn xóa bài viết này không?
+            </p>
+            <div className="flex justify-end gap-5">
+             
+              <Button
+                className="btn-danger px-4 py-2 rounded-lg"
+                onClick={handleDelete}
+              >
+                Xóa
+              </Button>
+               <Button
+                className="btn-warning px-4 py-2 rounded-lg"
+                onClick={() => setIsConfirmDeleteOpen(false)}
+              >
+                Hủy
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Form chỉnh sửa (modal overlay) */}
       {isEditing && (
         <div className="fixed inset-0 z-50 bg-black/20">
@@ -529,6 +610,17 @@ const ContentPost: React.FC<ContentProps> = ({
             />
           </div>
         </div>
+      )}
+
+      {/* Success Toast (fixed positioned) */}
+      {successToast && (
+        <Toast
+          key={successToast.id}
+          message={successToast.message}
+          title={successToast.title}
+          type={successToast.type}
+          onClose={() => setSuccessToast(null)}
+        />
       )}
     </div>
   );
