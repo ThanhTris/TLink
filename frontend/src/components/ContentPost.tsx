@@ -61,7 +61,7 @@ const ContentPost: React.FC<ContentProps> = ({
   files = [],
   author_id,
   user_name,
-  onPostDeleted, // NEW prop
+  onPostDeleted,
 }) => {
   const dispatch = useDispatch();
   const [liked, setLiked] = useState(is_liked); // boolean từ backend
@@ -76,7 +76,6 @@ const ContentPost: React.FC<ContentProps> = ({
   const [menuOpen, setMenuOpen] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [isDeleted, setIsDeleted] = useState(false);
   // NEW: confirm delete modal state
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   // NEW: success toast state
@@ -196,10 +195,6 @@ const ContentPost: React.FC<ContentProps> = ({
     // eslint-disable-next-line
   }, [showComments, id, currentUserId]);
 
-  if (isDeleted) {
-    return null; // đã xóa khỏi giao diện
-  }
-
   // Hiển thị tên người đăng: ưu tiên user_name từ backend
   const displayName = user_name || "Người dùng";
 
@@ -249,13 +244,8 @@ const ContentPost: React.FC<ContentProps> = ({
           message: backendMessage,
         });
         
-        // Notify parent to remove this post from list FIRST
+        // Notify parent to remove this post from list
         onPostDeleted?.(id);
-        
-        // Then set deleted state after a short delay to allow parent to handle removal
-        setTimeout(() => {
-          setIsDeleted(true);
-        }, 100); // Shorter delay to avoid seeing the post briefly
       } else {
         // Show error toast for unsuccessful deletion
         setSuccessToast({
