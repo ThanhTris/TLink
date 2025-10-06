@@ -169,6 +169,19 @@ const Home: React.FC = () => {
     setToast({ message: "Tạo bài viết thành công", type: "success" });
   };
 
+  // NEW: Handle post deletion
+  const handlePostDeleted = (postId: number) => {
+    setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
+    setTotalPosts(prevTotal => Math.max(0, prevTotal - 1));
+    
+    // Remove comments for deleted post
+    setCommentsMap(prevMap => {
+      const newMap = { ...prevMap };
+      delete newMap[postId];
+      return newMap;
+    });
+  };
+
   // Helper: Tạo mảng số trang hiển thị dạng << < 1 2 ... n-1 n > >
   function getPagination(current: number, total: number, max: number = 5): number[] {
     if (total <= max) return Array.from({ length: total }, (_, i) => i + 1);
@@ -222,6 +235,7 @@ const Home: React.FC = () => {
             is_saved={post.is_saved}
             is_liked={post.is_liked}
             initialComments={commentsMap[post.id] || []}
+            onPostDeleted={handlePostDeleted}
           />
         ))}
       {/* Phân trang */}
