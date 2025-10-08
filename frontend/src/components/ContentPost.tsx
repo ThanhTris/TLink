@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { Heart, MessageCircle, Ellipsis, Eye, EyeOff, BookmarkCheck, BookmarkX, X } from "lucide-react";
+import { Heart, MessageCircle, Ellipsis, Eye, EyeOff, BookmarkCheck, BookmarkX, X, TriangleAlert } from "lucide-react";
 import Button from "./Button";
 import CommentSection from "./CommentPostSection";
 import { getTimeAgoStrict, formatDateTimeVN } from "../utils/timeAgo";
@@ -168,6 +168,16 @@ const ContentPost: React.FC<ContentProps> = ({
       document.body.style.overflow = prev;
     };
   }, [isEditing]);
+
+  // Lock body scroll when confirm delete modal is open
+  useEffect(() => {
+    if (!isConfirmDeleteOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isConfirmDeleteOpen]);
 
   // Đồng bộ lại state liked khi prop is_liked thay đổi (ví dụ khi load lại từ backend)
   useEffect(() => {
@@ -594,26 +604,34 @@ const ContentPost: React.FC<ContentProps> = ({
         </>
       )}
 
-      {/* Confirm Delete Modal - Centered with subtle backdrop */}
+      {/* Confirm Delete Modal - Full screen overlay with backdrop */}
       {isConfirmDeleteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent">
-          <div className="user-menu w-full max-w-md mx-4 p-5 border border-[var(--glass-border)] rounded-xl shadow-lg">
-            <h4 className="text-lg font-semibold text-[var(--text-title)] mb-2">
-              Xóa bài viết?
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setIsConfirmDeleteOpen(false)}
+        >
+          <div 
+            className="user-menu w-full max-w-lg mx-4 p-6 border border-[var(--glass-border)] rounded-xl shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h4 className="text-xl font-semibold text-[var(--text-title)] mb-4 line-clamp-1">
+              Xóa bài viết "{displayTitle}"?
             </h4>
-            <p className="text-sm text-[var(--text-sub)] mb-4">
-              Hành động này không thể hoàn tác. Bạn có chắc chắn muốn xóa bài viết này không?
-            </p>
-            <div className="flex justify-end gap-5">
-             
+            <div className="mb-4">
+              <p className="text-sm text-red-600 font-medium flex items-center gap-2">
+                <TriangleAlert size={16} />
+                Hành động này không thể hoàn tác!
+              </p>
+            </div>
+            <div className="flex justify-end gap-8">
               <Button
-                className="btn-danger px-4 py-2 rounded-lg"
+                className="btn-danger px-5 py-2 rounded-lg"
                 onClick={handleDelete}
               >
-                Xóa
+                Xóa bài viết
               </Button>
-               <Button
-                className="btn-warning px-4 py-2 rounded-lg"
+              <Button
+                className="btn-warning px-5 py-2 rounded-lg"
                 onClick={() => setIsConfirmDeleteOpen(false)}
               >
                 Hủy
