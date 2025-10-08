@@ -182,6 +182,16 @@ const Home: React.FC = () => {
     });
   };
 
+  // Lock body scroll when CreatePost modal is open
+  useEffect(() => {
+    if (!showCreate) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [showCreate]);
+
   // Helper: Tạo mảng số trang hiển thị dạng << < 1 2 ... n-1 n > >
   function getPagination(current: number, total: number, max: number = 5): number[] {
     if (total <= max) return Array.from({ length: total }, (_, i) => i + 1);
@@ -204,8 +214,14 @@ const Home: React.FC = () => {
     <div className="px-16 py-8">
       <ContentHeader title="Mới nhất" onCreate={() => setShowCreate(true)} />
       {showCreate && (
-        <div className="fixed inset-0 z-50 bg-black/20">
-          <div className="min-h-screen flex items-center justify-center p-4 overflow-y-auto">
+        <div 
+          className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm"
+          onClick={() => setShowCreate(false)}
+        >
+          <div 
+            className="min-h-screen flex items-center justify-center p-4 overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <CreatePost
               onCancel={() => setShowCreate(false)}
               onSubmit={handleCreatePostSuccess}
