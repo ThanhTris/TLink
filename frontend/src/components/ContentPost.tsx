@@ -336,15 +336,47 @@ const ContentPost: React.FC<ContentProps> = ({
   }
 
   // Helper: cắt ngắn và thêm "..."
-  function makeExcerpt(md: string, maxChars = 200) {
+  function makeExcerpt(md: string, maxChars = 300) { // Changed from 200 to 300
     const plain = stripMarkdown(md);
     if (plain.length <= maxChars) return plain;
     return (plain.slice(0, maxChars).replace(/\s+\S*$/, "") + "...").trim();
   }
 
+  // Helper: cắt ngắn markdown content giữ nguyên format
+  function truncateMarkdown(md: string, maxChars = 300) {
+    if (!md || md.length <= maxChars) return md;
+    // Cắt tại vị trí maxChars và tìm điểm cắt hợp lý (không cắt giữa từ)
+    let truncated = md.slice(0, maxChars);
+    const lastSpaceIndex = truncated.lastIndexOf(' ');
+    if (lastSpaceIndex > maxChars * 0.8) { // Chỉ cắt tại khoảng trắng nếu không quá ngắn
+      truncated = truncated.slice(0, lastSpaceIndex);
+    }
+    return truncated + '...';
+  }
+
+  // Helper: kiểm tra nội dung có cần truncate không dựa trên plain text
+  function shouldTruncateContent(md: string, maxChars = 300) {
+    const plainText = stripMarkdown(md);
+    return plainText.length > maxChars;
+  }
+
+  // Helper: cắt ngắn markdown content giữ nguyên format và thêm inline button
+  function getTruncatedMarkdownWithButton(md: string, maxChars = 300) {
+    if (!md || !shouldTruncateContent(md, maxChars)) return md;
+    
+    let truncated = md.slice(0, maxChars);
+    const lastSpaceIndex = truncated.lastIndexOf(' ');
+    if (lastSpaceIndex > maxChars * 0.8) {
+      truncated = truncated.slice(0, lastSpaceIndex);
+    }
+    
+    // Trả về markdown đã cắt ngắn với "..." nhưng không có button ở đây
+    return truncated + '...';
+  }
+
   // Xác định có cần nút "Xem thêm" hay không
   const shouldShowExpand = useMemo(() => {
-    return countMarkdownLines(displayContent) > 3 || (displayContent && displayContent.length > 200);
+    return countMarkdownLines(displayContent) > 3 || shouldTruncateContent(displayContent, 300);
   }, [displayContent]);
 
   return (
@@ -472,45 +504,64 @@ const ContentPost: React.FC<ContentProps> = ({
         <div className="mb-3 text-sm italic text-gray-600">Bài viết đã bị ẩn.</div>
       ) : (
         <>
-          {/* Thu gọn: hiển thị plain text rút gọn + "Xem thêm" inline; Mở rộng: render markdown đầy đủ */}
-          {!isExpanded ? (
-            <>
-              <p
-                className="text-gray-800 mb-3 transition-all duration-200"
+          {/* Content section with expand/collapse */}
+          <div className="mb-3">
+            {!isExpanded ? (
+              <div
+                className="text-gray-800 transition-all duration-200"
                 style={{ wordBreak: "break-word" }}
               >
-                {makeExcerpt(displayContent, 200)}{" "}
-                {shouldShowExpand && (
+                {shouldTruncateContent(displayContent, 300) ? (
+                  <span>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                      {getTruncatedMarkdownWithButton(displayContent, 300)}
+                    </ReactMarkdown>
+                    <Button
+                      onClick={toggleReadMore}
+                      className="text-blue-500 hover:underline font-medium inline-block ml-1"
+          
+                    >
+                      Xem thêm
+                    </Button>
+                  </span>
+                ) : (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                    {displayContent}
+                  </ReactMarkdown>
+                )}
+              </div>
+            ) : (
+              <div
+                className="text-gray-800 transition-all duration-200"
+                style={{ wordBreak: "break-word" }}
+              >
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                  {displayContent}
+                </ReactMarkdown>
+                <div className="mt-2">
                   <button
                     onClick={toggleReadMore}
-                    className="text-blue-500 hover:underline whitespace-nowrap"
+                    className="text-blue-500 hover:underline font-medium"
                   >
-                    Xem thêm
+                    Thu gọn
                   </button>
-                )}
-              </p>
-            </>
-          ) : (
-            <div
-              className="text-gray-800 mb-3 transition-all duration-200"
-              style={{ wordBreak: "break-word" }}
-            >
-              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-                {displayContent}
-              </ReactMarkdown>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Images gallery - always shown below content */}
+          {displayImages.length > 0 && (
+            <div className="mb-3">
+              <PostImagesGallery images={displayImages} />
             </div>
           )}
 
-          {/* images gallery */}
-          {displayImages.length > 0 && <PostImagesGallery images={displayImages} />}
-
-          {/* files list */}
-          {displayFiles.length > 0 && <PostFilesList files={displayFiles} />}
-
-          {isExpanded && (
-            <Button onClick={toggleReadMore} className="text-blue-500 hover:text-blue-700">
-              Thu gọn
-            </Button>
+          {/* Files list - always shown below images */}
+          {displayFiles.length > 0 && (
+            <div className="mb-3">
+              <PostFilesList files={displayFiles} />
+            </div>
           )}
 
           <div className="flex items-center my-3 text-sm text-gray-500 gap-15 ">
