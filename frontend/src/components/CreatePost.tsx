@@ -847,7 +847,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
               ))}
             </div>
           )}
-          <div className="flex justify-end gap-5 mt-8">
+          <div className="flex justify-end gap-16 mt-8">
             <Button
               className={`btn-safe ${!canSubmit ? "opacity-60" : ""}`}
               onClick={handleSubmit}
