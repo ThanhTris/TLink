@@ -70,6 +70,7 @@ interface CreatePostProps {
     existingImageUrls?: string[];
     existingDocUrls?: { name: string; url: string }[];
   }) => void;
+  onToast?: (toast: { message: string; type: "success" | "error" | "warning"; title?: string }) => void;
   // thêm: hỗ trợ chế độ chỉnh sửa với dữ liệu ban đầu
   mode?: "create" | "edit";
   initialTitle?: string;
@@ -86,6 +87,7 @@ interface CreatePostProps {
 const CreatePost: React.FC<CreatePostProps> = ({
   onCancel,
   onSubmit,
+  onToast,
   mode = "create",
   initialTitle,
   initialContent,
@@ -344,16 +346,35 @@ const CreatePost: React.FC<CreatePostProps> = ({
       };
 
       let usedPostId = postId;
+      // Use backend response to determine success and message
       if (mode === "edit") {
         // Call API to update the post
         if (!postId) throw new Error("Missing postId for update");
-        await apiUpdatePost(postId, payload);
+        const res = await apiUpdatePost(postId, payload);
+        const apiResp = (res as any)?.data;
+        if (!apiResp?.success) {
+          // show backend-provided error message if any
+          pushToast({ title: "Lỗi", message: apiResp?.message || "Cập nhật thất bại", type: "error" });
+          throw new Error(apiResp?.message || "Update failed");
+        }
+        // Backend indicates success; take message from backend
+        pushToast({ title: "Thành công", message: apiResp?.message || "Cập nhật bài viết thành công", type: "success" });
         usedPostId = postId;
       } else {
         // Call API to create a new post
         const res = await createPost(payload);
-        usedPostId = (res as any)?.data?.data;
-        if (!usedPostId) throw new Error("Failed to retrieve postId");
+        const apiResp = (res as any)?.data;
+        if (!apiResp?.success) {
+          pushToast({ title: "Lỗi", message: apiResp?.message || "Tạo bài viết thất bại", type: "error" });
+          throw new Error(apiResp?.message || "Create failed");
+        }
+        usedPostId = apiResp?.data;
+        if (!usedPostId) {
+          pushToast({ title: "Lỗi", message: "Không lấy được ID bài viết từ server", type: "error" });
+          throw new Error("Failed to retrieve postId");
+        }
+        // Show backend message for create too
+        pushToast({ title: "Thành công", message: apiResp?.message || "Tạo bài viết thành công", type: "success" });
       }
 
       // 2. Upload new images (if any)
@@ -367,6 +388,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
       }
 
       // 4. Call the callback when done (always include childTags so consumers/backend won't get null)
+
       onSubmit?.({
         title,
         content,
@@ -379,6 +401,13 @@ const CreatePost: React.FC<CreatePostProps> = ({
         existingImageUrls: keptExistingImageUrls.filter((url): url is string => url !== null),
         existingDocUrls: existingDocUrls,
       });
+      // Show toast via parent handler if provided; otherwise use local pushToast
+      const finalToast = { message: (mode === "edit" ? "Cập nhật bài viết thành công" : "Tạo bài viết thành công"), type: "success" as const, title: mode === "edit" ? "Cập nhật" : "Thành công" };
+      if (onToast) {
+        onToast(finalToast);
+      } else {
+        pushToast(finalToast);
+      }
     } catch (err) {
       alert((mode === "edit" ? "Update" : "Create") + " post failed: " + (err as any)?.message);
     }
@@ -885,7 +914,7 @@ const CreatePost: React.FC<CreatePostProps> = ({
                       onClick={() => removeImageByIndex(i)}
                       title="Xóa ảnh"
                       aria-label="Xóa ảnh"
-                      className="absolute bottom-2 right-2 grid place-items-center w-8 h-8 rounded-full bg-white/90 backdrop-blur shadow-md ring-1 ring-black/10 text-gray-700 hover:text-[var(--text-danger)] hover:shadow-lg transition-opacity transition-transform duration-150 ease-out opacity-0 group-hover:opacity-100 hover:scale-105"
+                      className="absolute bottom-2 right-2 grid place-items-center w-8 h-8 rounded-full bg-white/90 backdrop-blur shadow-md ring-1 ring-black/10 text-gray-700 hover:text-[var(--text-danger)] hover:shadow-lg transition-transform duration-150 ease-out opacity-0 group-hover:opacity-100 hover:scale-105"
                     >
                       <Trash2 size={16} />
                     </Button>

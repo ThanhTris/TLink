@@ -253,6 +253,10 @@ const ContentPost: React.FC<ContentProps> = ({
           message: backendMessage,
         };
         onPostDeleted?.(id, toastInfo);
+        // Notify parent toast handler if provided
+        onToast?.(toastInfo);
+        // If no parent handlers provided, show a local toast fallback
+  if (!onPostDeleted && !onToast) setSuccessToast({ id: Date.now() + Math.random(), ...toastInfo });
       } else {
         toastInfo = {
           title: "Thất bại",
@@ -260,6 +264,8 @@ const ContentPost: React.FC<ContentProps> = ({
           message: backendMessage,
         };
         onPostDeleted?.(id, toastInfo);
+        onToast?.(toastInfo);
+  if (!onPostDeleted && !onToast) setSuccessToast({ id: Date.now() + Math.random(), ...toastInfo });
       }
     } catch (err) {
       const errorMessage = (err as any)?.response?.data?.message || "Xóa bài viết thất bại!";
@@ -269,10 +275,19 @@ const ContentPost: React.FC<ContentProps> = ({
         message: errorMessage,
       };
       onPostDeleted?.(id, toastInfo);
+      onToast?.(toastInfo);
+  if (!onPostDeleted && !onToast) setSuccessToast({ id: Date.now() + Math.random(), ...toastInfo });
     } finally {
       setIsConfirmDeleteOpen(false);
     }
   };
+
+  // Auto-dismiss local successToast after 2s
+  React.useEffect(() => {
+    if (!successToast) return;
+    const t = setTimeout(() => setSuccessToast(null), 2000);
+    return () => clearTimeout(t);
+  }, [successToast]);
 
   // Xử lý cập nhật bài viết
   const handleUpdate = async (data: {
@@ -661,6 +676,7 @@ const ContentPost: React.FC<ContentProps> = ({
               initialDocUrls={displayFiles}
               onCancel={() => setIsEditing(false)}
               onSubmit={handleUpdate}
+              onToast={onToast}
             />
           </div>
         </div>
