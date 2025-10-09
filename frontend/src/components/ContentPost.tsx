@@ -42,7 +42,8 @@ interface ContentProps {
 
   // onDelete?: (id: number) => void;
   // onUpdate?: (id: number, data: any) => void;
-  onPostDeleted?: (postId: number) => void; // NEW: callback when post is deleted
+  onPostDeleted?: (postId: number, toastInfo?: { message: string; type: "success" | "error" | "warning"; title?: string }) => void; // sửa kiểu
+  onToast?: (toast: { message: string; type: "success" | "error" | "warning"; title?: string }) => void; // thêm prop
 }
 
 const ContentPost: React.FC<ContentProps> = ({
@@ -62,6 +63,7 @@ const ContentPost: React.FC<ContentProps> = ({
   author_id,
   user_name,
   onPostDeleted,
+  onToast,
 }) => {
   const dispatch = useDispatch();
   const [liked, setLiked] = useState(is_liked); // boolean từ backend
@@ -239,41 +241,34 @@ const ContentPost: React.FC<ContentProps> = ({
   // Xử lý xóa bài viết (không dùng window.confirm)
   const handleDelete = async () => {
     if (!id) return;
+    let toastInfo: { message: string; type: "success" | "error" | "warning"; title?: string } | undefined;
     try {
       const response = await apiDeletePost(id);
-      // Extract success status and message from backend response
       const isSuccess = (response as any)?.data?.success;
       const backendMessage = (response as any)?.data?.message || "Bài viết đã được xóa thành công";
-      
       if (isSuccess) {
-        // Show success toast
-        setSuccessToast({
-          id: Date.now(),
+        toastInfo = {
           title: "Thành công",
           type: "success",
           message: backendMessage,
-        });
-        
-        // Notify parent to remove this post from list
-        onPostDeleted?.(id);
+        };
+        onPostDeleted?.(id, toastInfo);
       } else {
-        // Show error toast for unsuccessful deletion
-        setSuccessToast({
-          id: Date.now(),
+        toastInfo = {
           title: "Thất bại",
           type: "error",
           message: backendMessage,
-        });
+        };
+        onPostDeleted?.(id, toastInfo);
       }
     } catch (err) {
-      // Extract error message from backend if available
       const errorMessage = (err as any)?.response?.data?.message || "Xóa bài viết thất bại!";
-      setSuccessToast({
-        id: Date.now(),
+      toastInfo = {
         title: "Thất bại",
         type: "error",
         message: errorMessage,
-      });
+      };
+      onPostDeleted?.(id, toastInfo);
     } finally {
       setIsConfirmDeleteOpen(false);
     }
@@ -672,6 +667,7 @@ const ContentPost: React.FC<ContentProps> = ({
       )}
 
       {/* Success Toast (fixed positioned) */}
+      {/* Khi xóa bài viết, toast sẽ hiển thị ở Home, không hiển thị ở đây nữa */}
       {successToast && (
         <Toast
           key={successToast.id}

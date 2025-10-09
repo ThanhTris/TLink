@@ -47,7 +47,11 @@ const Home: React.FC = () => {
   // Phân trang
   const [totalPosts, setTotalPosts] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error" | "warning";
+    title?: string;
+  } | null>(null);
 
   // Lấy tổng số bài viết (cho phân trang)
   useEffect(() => {
@@ -169,17 +173,17 @@ const Home: React.FC = () => {
     setToast({ message: "Tạo bài viết thành công", type: "success" });
   };
 
-  // NEW: Handle post deletion
-  const handlePostDeleted = (postId: number) => {
+  // NEW: Handle post deletion, nhận thêm toastInfo từ ContentPost
+  const handlePostDeleted = (postId: number, toastInfo?: { message: string; type: "success" | "error" | "warning"; title?: string }) => {
     setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
     setTotalPosts(prevTotal => Math.max(0, prevTotal - 1));
-    
-    // Remove comments for deleted post
     setCommentsMap(prevMap => {
       const newMap = { ...prevMap };
       delete newMap[postId];
       return newMap;
     });
+    // Hiển thị toast nếu có thông tin từ ContentPost
+    if (toastInfo) setToast(toastInfo);
   };
 
   // Lock body scroll when CreatePost modal is open
@@ -232,6 +236,7 @@ const Home: React.FC = () => {
       {toast && (
         <Toast
           message={toast.message}
+          title={toast.title}
           type={toast.type}
           onClose={() => setToast(null)}
         />
@@ -251,7 +256,9 @@ const Home: React.FC = () => {
             is_saved={post.is_saved}
             is_liked={post.is_liked}
             initialComments={commentsMap[post.id] || []}
-            onPostDeleted={handlePostDeleted}
+            // Truyền callback nhận toast từ ContentPost
+            onPostDeleted={(postId, toastInfo) => handlePostDeleted(postId, toastInfo)}
+            onToast={setToast}
           />
         ))}
       {/* Phân trang */}
