@@ -38,8 +38,8 @@ export async function createPost(data: {
     content: data.content,
     authorId: data.authorId,
     parentTag: data.parentTagName, // Updated to match backend parameter
-    // Đảm bảo childTags luôn là mảng hoặc undefined (không null)
-    ...(Array.isArray(data.childTags) && data.childTags.length > 0 ? { childTags: data.childTags } : {}),
+    // Always send childTags as an array (can be empty) to avoid backend null handling issues
+    childTags: Array.isArray(data.childTags) ? data.childTags : [],
   });
 }
 
@@ -83,7 +83,8 @@ export async function updatePost(
     content: data.content,
     ...(data.authorId ? { authorId: data.authorId } : {}),
     ...(data.parentTagName ? { parentTag: data.parentTagName } : {}), // Updated to match backend parameter
-    ...(Array.isArray(data.childTags) && data.childTags.length > 0 ? { childTags: data.childTags } : {}),
+    // Always include childTags (possibly empty array)
+    childTags: Array.isArray(data.childTags) ? data.childTags : [],
   });
 }
 

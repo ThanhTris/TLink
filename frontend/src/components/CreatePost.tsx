@@ -334,13 +334,13 @@ const CreatePost: React.FC<CreatePostProps> = ({
       .filter(Boolean);
 
     try {
-      // Ensure childTags is an array of strings or undefined
+      // Ensure childTags is always sent as an array (backend expects list, null can cause NPE)
       const payload: any = {
         title,
         content,
         authorId,
         parentTagName: tagParent, // Updated to match backend parameter
-        ...(childTags.length > 0 ? { childTags } : {}),
+        childTags: Array.isArray(childTags) ? childTags : [],
       };
 
       let usedPostId = postId;
@@ -366,13 +366,13 @@ const CreatePost: React.FC<CreatePostProps> = ({
         await uploadPostFile(usedPostId, file);
       }
 
-      // 4. Call the callback when done
+      // 4. Call the callback when done (always include childTags so consumers/backend won't get null)
       onSubmit?.({
         title,
         content,
         authorId,
         tagParent: tagParent, // Updated to match backend parameter
-        ...(childTags.length > 0 ? { childTags } : {}),
+        childTags: Array.isArray(childTags) ? childTags : [],
         imageFiles: [],
         docFiles: [],
         // Pass the correct format to the frontend (url or object {name, url})
